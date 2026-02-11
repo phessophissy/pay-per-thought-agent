@@ -1,162 +1,402 @@
-# Pay-Per-Thought Agent — CRE Workflow Definition
-# Chainlink Runtime Environment orchestration for metered research execution
+# ═══════════════════════════════════════════════════════════════
+# Pay-Per-Thought Agent — Chainlink CRE Workflow
+# ═══════════════════════════════════════════════════════════════
 #
-# This workflow defines a 3-phase research pipeline:
-#   1. Planning   — decompose query into atomic steps with cost estimates
-#   2. Execution  — x402-gated sequential step execution
-#   3. Synthesis  — aggregate results into structured JSON
+# Executable workflow for metered autonomous research.
+# Each research request flows through 5 deterministic nodes:
 #
-# Deploy: cre workflow deploy
-# Activate: cre workflow activate
-# Simulate: cre workflow simulate
+#   1. planning_node       → Decompose query into atomic steps
+#   2. budget_lock_node    → Lock total budget in x402 contract
+#   3. execution_node      → Execute each step with per-step x402 auth
+#   4. synthesis_node      → Aggregate results into structured output
+#   5. settlement_node     → Release unused budget to payer
+#
+# On failure at any node, control transfers to halt_node which
+# returns partial results and triggers budget refund.
+#
+# ─── DEPLOYMENT ────────────────────────────────────────────────
+#
+# Prerequisites:
+#   export PATH="$HOME/.local/bin:$PATH"
+#   cre login
+#
+# Deploy the workflow:
+#   cre workflow deploy -R . --target staging-settings
+#
+# Activate the workflow:
+#   cre workflow activate --workflow-name pay-per-thought-workflow --target staging-settings
+#
+# Run the workflow (manual trigger):
+#   cre workflow run --workflow-name pay-per-thought-workflow \
+#     --target staging-settings \
+#     --payload '{"query":"What is the current TVL of Aave v3 on Ethereum mainnet?","max_budget_usd":0.50}'
+#
+# Simulate locally:
+#   cre workflow simulate -R . --target staging-settings
+#
+# ─── EXAMPLE PAYLOAD ───────────────────────────────────────────
+#
+# {
+#   "query": "What is the current TVL of Aave v3 on Ethereum mainnet?",
+#   "max_budget_usd": 0.50,
+#   "session_id": "optional-custom-session-id"
+# }
+#
+# ═══════════════════════════════════════════════════════════════
 
-name: pay-per-thought-agent
-version: "1.0.0"
-description: >
-  Autonomous research agent with x402 micropayment enforcement.
-  Every reasoning step is metered, authorized, and cryptographically verifiable.
+name: pay-per-thought-workflow
+version: "2.0.0"
 
-# ─── Triggers ──────────────────────────────────────────────────
-triggers:
-  # HTTP webhook trigger — receives research requests
-  - id: research_request
-    type: webhook
-    config:
-      method: POST
-      path: /research
-      schema:
-        type: object
-        required: [query, max_budget]
-        properties:
-          query:
-            type: string
-            description: "The research question to investigate"
-          max_budget:
-            type: number
-            description: "Maximum budget in USD for this research session"
-          session_id:
-            type: string
-            description: "Optional session identifier for tracking"
+# ─── TRIGGER ───────────────────────────────────────────────────
+# The workflow is triggered by an external HTTP POST request
+# containing the research query and budget constraints.
+# In production this would be invoked by the FastAPI server
+# or directly by a CRE-integrated frontend.
 
-  # Cron trigger — scheduled research jobs
-  - id: scheduled_research
-    type: cron
-    config:
-      schedule: "0 */6 * * *"  # Every 6 hours
-      enabled: false
+trigger:
+  type: webhook
+  config:
+    method: POST
+    path: /api/research
+    # Schema enforced at trigger level — reject malformed requests
+    schema:
+      type: object
+      required:
+        - query
+        - max_budget_usd
+      properties:
+        query:
+          type: string
+          minLength: 5
+          description: "Research question to investigate"
+        max_budget_usd:
+          type: number
+          minimum: 0.01
+          maximum: 100.0
+          description: "Maximum budget in USD for this session"
+        session_id:
+          type: string
+          description: "Optional session ID for tracking (auto-generated if omitted)"
 
-# ─── Workflow Nodes ────────────────────────────────────────────
+# ─── NODES ─────────────────────────────────────────────────────
+# Each node is an atomic execution unit. Nodes declare inputs,
+# outputs, and error handling. The CRE runtime guarantees
+# sequential execution in dependency order.
+
 nodes:
 
-  # ── Phase 1: Planning ─────────────────────────────────────
-  - id: plan_generation
+  # ──────────────────────────────────────────────────────────────
+  # NODE 1: PLANNING
+  # ──────────────────────────────────────────────────────────────
+  # Decomposes the research query into an ordered list of atomic
+  # steps. Each step specifies a tool (anthropic/tavily/blockchain_rpc),
+  # a description, and an estimated cost.
+  #
+  # Uses Claude via Anthropic API to reason about decomposition.
+  # Budget-constrained: stops adding steps when budget would be exceeded.
+  #
+  # Output: ExecutionPlan JSON containing step list and cost estimates.
+
+  - id: planning_node
     type: custom_compute
-    description: "Decompose research query into atomic execution steps"
+    description: "Phase 1: Decompose research query into metered execution steps"
     inputs:
-      query: "$(triggers.research_request.body.query)"
-      max_budget: "$(triggers.research_request.body.max_budget)"
+      query: "$(trigger.body.query)"
+      max_budget_usd: "$(trigger.body.max_budget_usd)"
+      session_id: "$(trigger.body.session_id)"
     config:
-      handler: agent/planner
+      runtime: python
+      handler: agent/planning.py
+      entry_point: generate_plan
       timeout: 30s
+      secrets:
+        - ANTHROPIC_API_KEY
     outputs:
-      execution_plan:
+      plan:
         type: object
-        description: "Structured plan with steps and cost estimates"
+        description: "Execution plan with steps, costs, and session metadata"
+        schema:
+          properties:
+            session_id: { type: string }
+            query: { type: string }
+            steps:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  index: { type: integer }
+                  description: { type: string }
+                  tool: { type: string, enum: ["anthropic", "tavily", "blockchain_rpc"] }
+                  estimated_cost_usd: { type: number }
+            step_count: { type: integer }
+            total_estimated_cost: { type: number }
+            max_budget_usd: { type: number }
+    on_error: halt_node
 
-  # ── Phase 2: Payment Authorization ────────────────────────
-  - id: x402_budget_lock
+  # ──────────────────────────────────────────────────────────────
+  # NODE 2: BUDGET LOCK (x402)
+  # ──────────────────────────────────────────────────────────────
+  # Calls X402PaymentGate.lockBudget() on Sepolia to escrow the
+  # total estimated budget in ERC-20 tokens. This ensures the
+  # payer has committed funds before any execution begins.
+  #
+  # The locked amount equals the total_estimated_cost from planning.
+  # Step count is passed for contract-level accounting.
+  #
+  # If this fails (insufficient funds, contract error), the workflow
+  # halts immediately via on_error.
+
+  - id: budget_lock_node
     type: evm_write
-    description: "Lock total estimated budget in x402 payment contract"
-    depends_on: [plan_generation]
+    description: "Lock total estimated budget in x402 payment gate contract"
+    depends_on:
+      - planning_node
     inputs:
-      contract_address: "$(env.X402_CONTRACT_ADDRESS)"
-      method: "lockBudget"
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia"
+      method: "lockBudget(bytes32,uint256,uint256)"
       args:
-        session_id: "$(plan_generation.outputs.execution_plan.session_id)"
-        total_amount: "$(plan_generation.outputs.execution_plan.total_estimated_cost)"
-        step_count: "$(plan_generation.outputs.execution_plan.step_count)"
+        - "$(planning_node.outputs.plan.session_id)"      # sessionId
+        - "$(planning_node.outputs.plan.total_estimated_cost)"  # totalAmount
+        - "$(planning_node.outputs.plan.step_count)"       # stepCount
     config:
-      chain_id: 11155111  # Sepolia
       gas_limit: 300000
+      confirmations: 1
+    outputs:
+      lock_tx:
+        type: object
+        properties:
+          tx_hash: { type: string }
+          block_number: { type: integer }
+          status: { type: string }
+    on_error: halt_node
 
-  # ── Phase 2: Metered Execution ────────────────────────────
-  - id: step_executor
+  # ──────────────────────────────────────────────────────────────
+  # NODE 3: METERED EXECUTION
+  # ──────────────────────────────────────────────────────────────
+  # Iterates through each planned step sequentially.
+  # For EACH step:
+  #   1. Calls X402PaymentGate.authorizePayment() — on-chain x402 gate
+  #   2. If authorized → execute step via appropriate tool
+  #   3. On success → calls confirmExecution() on-chain
+  #   4. On failure → calls refund() on-chain, logs error, continues
+  #
+  # If x402 authorization fails (budget exceeded), execution halts
+  # and partial results are passed to synthesis.
+  #
+  # Tools:
+  #   - "anthropic"       → Claude API for reasoning/analysis
+  #   - "tavily"          → Tavily Search API for web data
+  #   - "blockchain_rpc"  → Ethereum JSON-RPC for on-chain data
+  #
+  # All outputs are stored with source attribution and timestamps.
+
+  - id: execution_node
     type: custom_compute
-    description: "Execute each planned step with x402 payment gate"
-    depends_on: [x402_budget_lock]
+    description: "Phase 2: Execute each step with per-step x402 payment authorization"
+    depends_on:
+      - budget_lock_node
     inputs:
-      execution_plan: "$(plan_generation.outputs.execution_plan)"
-      budget_lock_tx: "$(x402_budget_lock.outputs.tx_hash)"
+      plan: "$(planning_node.outputs.plan)"
+      lock_tx_hash: "$(budget_lock_node.outputs.lock_tx.tx_hash)"
     config:
-      handler: agent/executor
+      runtime: python
+      handler: agent/executor.py
+      entry_point: execute_plan
       timeout: 300s
-      max_retries: 1
+      max_retries: 0
+      secrets:
+        - ANTHROPIC_API_KEY
+        - TAVILY_API_KEY
+        - X402_CONTRACT_ADDRESS
+        - PRIVATE_KEY
     outputs:
       step_results:
         type: array
-        description: "Results from each executed step"
-      total_spent:
+        description: "Result from each executed step"
+        items:
+          type: object
+          properties:
+            step_id: { type: string }
+            index: { type: integer }
+            status: { type: string, enum: ["completed", "failed", "payment_denied"] }
+            tool: { type: string }
+            output: { type: object }
+            actual_cost_usd: { type: number }
+            duration_ms: { type: integer }
+            payment_tx_hash: { type: string }
+            error: { type: string }
+            sources: { type: array, items: { type: string } }
+            timestamp: { type: string }
+      total_spent_usd:
         type: number
-        description: "Total amount spent across all steps"
-      halted:
+        description: "Total amount consumed across all completed steps"
+      was_halted:
         type: boolean
-        description: "Whether execution was halted due to budget"
+        description: "True if execution halted due to budget or payment denial"
+    on_error: halt_node
 
-  # ── Phase 3: Synthesis ────────────────────────────────────
-  - id: result_synthesis
+  # ──────────────────────────────────────────────────────────────
+  # NODE 4: SYNTHESIS
+  # ──────────────────────────────────────────────────────────────
+  # Aggregates all completed step results into a final structured
+  # research output. Uses Claude to synthesize evidence into a
+  # coherent answer with confidence scoring.
+  #
+  # Output includes:
+  #   - Synthesized answer
+  #   - Confidence level (high/medium/low)
+  #   - Key findings with evidence and source attribution
+  #   - Assumptions and limitations
+  #   - Cost summary
+  #
+  # If execution was halted (partial results), synthesis clearly
+  # labels the output as partial and notes the limitation.
+
+  - id: synthesis_node
     type: custom_compute
-    description: "Aggregate step results into final structured output"
-    depends_on: [step_executor]
+    description: "Phase 3: Aggregate verified step results into final structured output"
+    depends_on:
+      - execution_node
     inputs:
-      step_results: "$(step_executor.outputs.step_results)"
-      original_query: "$(triggers.research_request.body.query)"
-      total_spent: "$(step_executor.outputs.total_spent)"
-      was_halted: "$(step_executor.outputs.halted)"
+      query: "$(trigger.body.query)"
+      step_results: "$(execution_node.outputs.step_results)"
+      total_spent_usd: "$(execution_node.outputs.total_spent_usd)"
+      was_halted: "$(execution_node.outputs.was_halted)"
     config:
-      handler: agent/synthesizer
+      runtime: python
+      handler: agent/synthesizer.py
+      entry_point: synthesize_results
       timeout: 60s
+      secrets:
+        - ANTHROPIC_API_KEY
     outputs:
-      final_result:
+      result:
         type: object
-        description: "Verified, aggregated research result"
+        description: "Final research result with full provenance"
+        schema:
+          properties:
+            answer: { type: string }
+            confidence: { type: string, enum: ["high", "medium", "low"] }
+            key_findings: { type: array }
+            assumptions: { type: array }
+            limitations: { type: array }
+            sources: { type: array }
+            total_cost_usd: { type: number }
+            steps_executed: { type: integer }
+            steps_total: { type: integer }
+            was_halted: { type: boolean }
+    on_error: halt_node
 
-  # ── Settlement: Release remaining budget ──────────────────
-  - id: x402_settlement
+  # ──────────────────────────────────────────────────────────────
+  # NODE 5: SETTLEMENT (x402)
+  # ──────────────────────────────────────────────────────────────
+  # Calls X402PaymentGate.settleBudget() to:
+  #   1. Finalize total_spent on-chain
+  #   2. Transfer consumed tokens to operator
+  #   3. Refund unused tokens back to payer
+  #
+  # This ensures the payer never pays more than actually consumed.
+
+  - id: settlement_node
     type: evm_write
-    description: "Settle payment — release unused budget back to user"
-    depends_on: [result_synthesis]
+    description: "Settle payment — finalize spend and refund unused budget"
+    depends_on:
+      - synthesis_node
     inputs:
-      contract_address: "$(env.X402_CONTRACT_ADDRESS)"
-      method: "settleBudget"
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia"
+      method: "settleBudget(bytes32,uint256)"
       args:
-        session_id: "$(plan_generation.outputs.execution_plan.session_id)"
-        total_spent: "$(step_executor.outputs.total_spent)"
+        - "$(planning_node.outputs.plan.session_id)"
+        - "$(execution_node.outputs.total_spent_usd)"
     config:
-      chain_id: 11155111
       gas_limit: 200000
+      confirmations: 1
+    outputs:
+      settlement_tx:
+        type: object
+        properties:
+          tx_hash: { type: string }
+          total_spent: { type: number }
+          refunded: { type: number }
 
-# ─── Callbacks ─────────────────────────────────────────────────
-callbacks:
-  - trigger: research_request
-    handler: result_synthesis
-    response:
-      status_code: 200
-      body: "$(result_synthesis.outputs.final_result)"
+  # ──────────────────────────────────────────────────────────────
+  # NODE 6: HALT / FAILURE HANDLER
+  # ──────────────────────────────────────────────────────────────
+  # Error handler node. Activated when any upstream node fails.
+  # Responsibilities:
+  #   1. Attempt budget refund via settleBudget(session_id, 0)
+  #   2. Return partial results if any execution completed
+  #   3. Log the failure reason for debugging
+  #
+  # This ensures funds are never permanently locked on failure.
 
-# ─── Environment ───────────────────────────────────────────────
-environment:
-  secrets:
-    - ANTHROPIC_API_KEY
-    - TAVILY_API_KEY
-    - PRIVATE_KEY
-  variables:
-    - X402_CONTRACT_ADDRESS
-    - PAYMENT_TOKEN_ADDRESS
-    - RPC_URL
+  - id: halt_node
+    type: custom_compute
+    description: "Error handler — refund budget and return partial results"
+    inputs:
+      error_source: "$(error.node_id)"
+      error_message: "$(error.message)"
+      plan: "$(planning_node.outputs.plan)"
+      partial_results: "$(execution_node.outputs.step_results)"
+      total_spent: "$(execution_node.outputs.total_spent_usd)"
+    config:
+      runtime: python
+      handler: agent/synthesizer.py
+      entry_point: handle_halt
+      timeout: 30s
+    outputs:
+      halt_result:
+        type: object
+        properties:
+          status: { type: string }
+          error_source: { type: string }
+          error_message: { type: string }
+          partial_answer: { type: string }
+          total_spent_usd: { type: number }
+          refund_attempted: { type: boolean }
 
-# ─── Capabilities Used ────────────────────────────────────────
+# ─── RESPONSE ──────────────────────────────────────────────────
+# The webhook response is constructed from the synthesis output.
+# On success: full research result with cost breakdown.
+# On halt:    partial result with error context.
+
+response:
+  success:
+    status_code: 200
+    body:
+      status: "completed"
+      session_id: "$(planning_node.outputs.plan.session_id)"
+      query: "$(trigger.body.query)"
+      plan: "$(planning_node.outputs.plan)"
+      actions: "$(execution_node.outputs.step_results)"
+      results: "$(synthesis_node.outputs.result)"
+      settlement: "$(settlement_node.outputs.settlement_tx)"
+      timestamp: "$(system.timestamp)"
+
+  error:
+    status_code: 500
+    body:
+      status: "halted"
+      error: "$(halt_node.outputs.halt_result)"
+      timestamp: "$(system.timestamp)"
+
+# ─── SECRETS ───────────────────────────────────────────────────
+# Managed via: cre secrets set <KEY> <VALUE>
+
+secrets:
+  - ANTHROPIC_API_KEY           # Claude API key for planning + synthesis
+  - TAVILY_API_KEY              # Tavily search API key
+  - PRIVATE_KEY                 # Ethereum private key for x402 transactions
+  - X402_CONTRACT_ADDRESS       # Deployed X402PaymentGate contract address
+  - RPC_URL                     # Ethereum Sepolia RPC endpoint
+
+# ─── CAPABILITIES ──────────────────────────────────────────────
+
 capabilities:
-  - custom_compute    # Agent logic execution
-  - evm_write         # On-chain payment interactions
-  - evm_read          # Balance checks
-  - http_fetch        # External API calls (Tavily, Anthropic)
+  - custom_compute   # Python agent logic execution
+  - evm_write        # On-chain x402 payment interactions
+  - evm_read         # Balance checks, step verification
+  - http_fetch       # External API calls (Anthropic, Tavily)
