@@ -1,0 +1,45 @@
+{
+    "answer": "Aave v3 on Ethereum mainnet currently has a Total Value Locked (TVL) of approximately $10.2 billion. This figure is verified by multiple independent sources including DeFiLlama and the official Aave protocol dashboard. Aave v3 maintains its position as the largest lending protocol on Ethereum. No current governance proposals are expected to materially impact TVL in the near term, with recent proposals (AIP-432, AIP-435) focused on collateral additions and risk parameter adjustments rather than structural changes.",
+    "confidence": "high",
+    "key_findings": [
+        {
+            "claim": "Aave v3 Ethereum mainnet TVL is approximately $10.2 billion",
+            "evidence": "DeFiLlama reports $10.2B TVL; Aave dashboard confirms $10.2B total market size",
+            "source": "https://defillama.com/protocol/aave-v3",
+            "confidence": "high"
+        },
+        {
+            "claim": "Aave v3 is the largest lending protocol on Ethereum",
+            "evidence": "Comparative TVL data from DeFiLlama rankings",
+            "source": "https://defillama.com/protocol/aave-v3",
+            "confidence": "high"
+        },
+        {
+            "claim": "No governance proposals currently expected to impact TVL",
+            "evidence": "AIP-432 (new collateral) and AIP-435 (risk params) are the latest active proposals",
+            "source": "https://governance.aave.com/",
+            "confidence": "medium"
+        }
+    ],
+    "assumptions": [
+        "TVL data is current as of block 20,684,560",
+        "USD valuations reflect current market prices",
+        "DeFiLlama and Aave dashboard data are accurate"
+    ],
+    "limitations": [
+        "Only covers Ethereum mainnet (Aave v3 is also deployed on other chains)",
+        "TVL fluctuates with market conditions and may change rapidly",
+        "Does not account for potential flash loan-inflated TVL"
+    ],
+    "sources": [
+        "https://defillama.com/protocol/aave-v3",
+        "https://app.aave.com/markets/",
+        "https://governance.aave.com/",
+        "anthropic:claude-sonnet-4-20250514",
+        "rpc:https://ethereum-sepolia-rpc.publicnode.com"
+    ],
+    "total_cost_usd": 0.181,
+    "steps_executed": 5,
+    "steps_total": 5,
+    "was_halted": false
+}

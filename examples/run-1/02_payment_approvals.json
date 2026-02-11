@@ -1,0 +1,72 @@
+[
+    {
+        "step_id": "step_0_3f8a1c2b",
+        "action": "authorizePayment",
+        "amount_usd": 0.01,
+        "authorized": true,
+        "tx_hash": "0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890",
+        "timestamp": "2026-02-11T18:30:01.000000+00:00"
+    },
+    {
+        "step_id": "step_0_3f8a1c2b",
+        "action": "confirmExecution",
+        "tx_hash": "0x2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890ab",
+        "timestamp": "2026-02-11T18:30:03.200000+00:00"
+    },
+    {
+        "step_id": "step_1_9d4e7f2a",
+        "action": "authorizePayment",
+        "amount_usd": 0.001,
+        "authorized": true,
+        "tx_hash": "0x3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcd",
+        "timestamp": "2026-02-11T18:30:03.500000+00:00"
+    },
+    {
+        "step_id": "step_1_9d4e7f2a",
+        "action": "confirmExecution",
+        "tx_hash": "0x4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        "timestamp": "2026-02-11T18:30:04.100000+00:00"
+    },
+    {
+        "step_id": "step_2_5c1b8e3d",
+        "action": "authorizePayment",
+        "amount_usd": 0.08,
+        "authorized": true,
+        "tx_hash": "0x5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12",
+        "timestamp": "2026-02-11T18:30:04.500000+00:00"
+    },
+    {
+        "step_id": "step_2_5c1b8e3d",
+        "action": "confirmExecution",
+        "tx_hash": "0x6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234",
+        "timestamp": "2026-02-11T18:30:07.800000+00:00"
+    },
+    {
+        "step_id": "step_3_7a2f4d6e",
+        "action": "authorizePayment",
+        "amount_usd": 0.01,
+        "authorized": true,
+        "tx_hash": "0x7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456",
+        "timestamp": "2026-02-11T18:30:08.000000+00:00"
+    },
+    {
+        "step_id": "step_3_7a2f4d6e",
+        "action": "confirmExecution",
+        "tx_hash": "0x890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567",
+        "timestamp": "2026-02-11T18:30:10.500000+00:00"
+    },
+    {
+        "step_id": "step_4_1e9c3b5a",
+        "action": "authorizePayment",
+        "amount_usd": 0.08,
+        "authorized": true,
+        "tx_hash": "0x90abcdef1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+        "timestamp": "2026-02-11T18:30:10.800000+00:00"
+    },
+    {
+        "step_id": "step_4_1e9c3b5a",
+        "action": "confirmExecution",
+        "tx_hash": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        "timestamp": "2026-02-11T18:30:14.200000+00:00"
+    }
+]
