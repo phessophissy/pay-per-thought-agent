@@ -1,14 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pay-Per-Thought Agent</title>
-  <meta name="description" content="Autonomous research agent with x402 micropayment enforcement. Metered cognition, verifiable execution." />
+  <meta name="description"
+    content="Autonomous research agent with x402 micropayment enforcement. Metered cognition, verifiable execution." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
       --bg-primary: #0a0a0f;
@@ -43,7 +53,6 @@
       overflow-x: hidden;
     }
 
-    /* ── Background Grid ─── */
     body::before {
       content: '';
       position: fixed;
@@ -95,8 +104,17 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--cyan); }
-      50% { opacity: 0.4; box-shadow: none; }
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 4px var(--cyan);
+      }
+
+      50% {
+        opacity: 0.4;
+        box-shadow: none;
+      }
     }
 
     h1 {
@@ -156,7 +174,8 @@
       font-family: var(--font-mono);
     }
 
-    input, textarea {
+    input,
+    textarea {
       background: var(--bg-input);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -168,7 +187,8 @@
       transition: border-color 0.2s;
     }
 
-    input:focus, textarea:focus {
+    input:focus,
+    textarea:focus {
       border-color: var(--accent);
     }
 
@@ -207,6 +227,77 @@
       transform: none;
     }
 
+    /* ── Budget Meter ─── */
+    .budget-meter {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .budget-meter.visible {
+      display: block;
+    }
+
+    .budget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .budget-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .budget-values {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .budget-spent {
+      color: var(--yellow);
+    }
+
+    .budget-total {
+      color: var(--text-muted);
+    }
+
+    .budget-bar-container {
+      height: 8px;
+      background: var(--bg-input);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .budget-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--yellow));
+      border-radius: 4px;
+      transition: width 0.5s ease-out;
+      width: 0%;
+    }
+
+    .budget-bar-fill.danger {
+      background: linear-gradient(90deg, var(--yellow), var(--red));
+    }
+
+    .budget-steps {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
     /* ── Status Bar ─── */
     .status-bar {
       display: flex;
@@ -228,15 +319,33 @@
       background: var(--text-muted);
     }
 
-    .status-indicator.active { background: var(--yellow); animation: pulse 1s infinite; }
-    .status-indicator.completed { background: var(--green); }
-    .status-indicator.error { background: var(--red); }
+    .status-indicator.active {
+      background: var(--yellow);
+      animation: pulse 1s infinite;
+    }
 
-    .status-text { color: var(--text-secondary); flex: 1; }
-    .status-cost { color: var(--green); font-weight: 600; }
+    .status-indicator.completed {
+      background: var(--green);
+    }
+
+    .status-indicator.error {
+      background: var(--red);
+    }
+
+    .status-text {
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .status-cost {
+      color: var(--green);
+      font-weight: 600;
+    }
 
     /* ── Step Timeline ─── */
-    .timeline { margin-bottom: 32px; }
+    .timeline {
+      margin-bottom: 32px;
+    }
 
     .timeline-step {
       display: flex;
@@ -247,8 +356,15 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .step-index {
@@ -264,12 +380,39 @@
       flex-shrink: 0;
     }
 
-    .step-index.pending { background: var(--bg-input); color: var(--text-muted); border: 1px solid var(--border); }
-    .step-index.running { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255, 215, 64, 0.3); }
-    .step-index.completed { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0, 230, 118, 0.3); }
-    .step-index.failed { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255, 82, 82, 0.3); }
+    .step-index.pending {
+      background: var(--bg-input);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
 
-    .step-content { flex: 1; }
+    .step-index.running {
+      background: var(--yellow-dim);
+      color: var(--yellow);
+      border: 1px solid rgba(255, 215, 64, 0.3);
+    }
+
+    .step-index.completed {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+
+    .step-index.failed {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+    }
+
+    .step-index.denied {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+    }
+
+    .step-content {
+      flex: 1;
+    }
 
     .step-header {
       display: flex;
@@ -300,11 +443,33 @@
       color: var(--text-muted);
       display: flex;
       gap: 16px;
+      flex-wrap: wrap;
     }
 
-    .step-meta .cost { color: var(--green); }
-    .step-meta .duration { color: var(--text-secondary); }
-    .step-meta .tx { color: var(--accent); }
+    .step-meta .cost {
+      color: var(--green);
+    }
+
+    .step-meta .duration {
+      color: var(--text-secondary);
+    }
+
+    .step-meta .tx {
+      color: var(--accent);
+      font-size: 10px;
+    }
+
+    .step-meta .payment-status {
+      font-weight: 600;
+    }
+
+    .step-meta .payment-status.approved {
+      color: var(--green);
+    }
+
+    .step-meta .payment-status.denied {
+      color: var(--red);
+    }
 
     /* ── Result Card ─── */
     .result-card {
@@ -330,7 +495,6 @@
       font-family: var(--font-mono);
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: var(--text-primary);
     }
 
     .confidence-badge {
@@ -342,9 +506,23 @@
       text-transform: uppercase;
     }
 
-    .confidence-badge.high { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0, 230, 118, 0.3); }
-    .confidence-badge.medium { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255, 215, 64, 0.3); }
-    .confidence-badge.low { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255, 82, 82, 0.3); }
+    .confidence-badge.high {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+
+    .confidence-badge.medium {
+      background: var(--yellow-dim);
+      color: var(--yellow);
+      border: 1px solid rgba(255, 215, 64, 0.3);
+    }
+
+    .confidence-badge.low {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+    }
 
     .result-body {
       padding: 24px;
@@ -353,7 +531,6 @@
     .result-answer {
       font-size: 15px;
       line-height: 1.7;
-      color: var(--text-primary);
       margin-bottom: 20px;
     }
 
@@ -417,7 +594,9 @@
       overflow-x: auto;
     }
 
-    .json-viewer.visible { display: block; }
+    .json-viewer.visible {
+      display: block;
+    }
 
     .json-viewer pre {
       font-family: var(--font-mono);
@@ -428,7 +607,7 @@
       word-break: break-word;
     }
 
-    /* ── Footer Stats ─── */
+    /* ── Stats Bar ─── */
     .stats-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -471,17 +650,33 @@
       animation: spin 0.8s linear infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     /* ── Responsive ─── */
     @media (max-width: 640px) {
-      .input-row { flex-direction: column; }
-      .input-group.budget { flex: 1; }
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      h1 { font-size: 28px; }
+      .input-row {
+        flex-direction: column;
+      }
+
+      .input-group.budget {
+        flex: 1;
+      }
+
+      .stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      h1 {
+        font-size: 28px;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <!-- Header -->
@@ -500,8 +695,8 @@
     <div class="input-card">
       <div class="input-row">
         <div class="input-group">
-          <label for="query">Research Query</label>
-          <textarea id="query" placeholder="e.g. What is the current TVL of Aave on Ethereum mainnet?"></textarea>
+          <label for="query">Research Task</label>
+          <textarea id="query" placeholder="e.g. What is the current TVL of Aave v3 on Ethereum mainnet?"></textarea>
         </div>
         <div class="input-group budget">
           <label for="budget">Max Budget ($)</label>
@@ -510,6 +705,24 @@
         <button class="btn btn-primary" id="submitBtn" onclick="submitResearch()">
           Execute
         </button>
+      </div>
+    </div>
+
+    <!-- Budget Meter -->
+    <div class="budget-meter" id="budgetMeter">
+      <div class="budget-header">
+        <span class="budget-label">x402 Budget Consumption</span>
+        <span class="budget-values">
+          <span class="budget-spent" id="budgetSpent">$0.0000</span>
+          <span class="budget-total"> / <span id="budgetTotal">$0.50</span></span>
+        </span>
+      </div>
+      <div class="budget-bar-container">
+        <div class="budget-bar-fill" id="budgetBarFill"></div>
+      </div>
+      <div class="budget-steps">
+        <span id="stepsProgress">0 / 0 steps</span>
+        <span id="budgetPercent">0%</span>
       </div>
     </div>
 
@@ -560,12 +773,18 @@
   <script>
     const API_URL = 'http://localhost:8000';
 
+    let currentBudget = 0;
+    let currentSpent = 0;
+
     async function submitResearch() {
       const query = document.getElementById('query').value.trim();
       const budget = parseFloat(document.getElementById('budget').value);
       const btn = document.getElementById('submitBtn');
 
       if (!query) return;
+
+      currentBudget = budget;
+      currentSpent = 0;
 
       // Reset UI
       btn.disabled = true;
@@ -576,62 +795,88 @@
       document.getElementById('jsonToggle').style.display = 'none';
       document.getElementById('statsBar').style.display = 'none';
 
+      // Show budget meter
+      const budgetMeter = document.getElementById('budgetMeter');
+      budgetMeter.classList.add('visible');
+      updateBudgetMeter(0, budget, 0, 0);
+
       // Show status
       const statusBar = document.getElementById('statusBar');
       statusBar.style.display = 'flex';
-      setStatus('active', 'Initiating research pipeline...', '');
+      setStatus('active', 'Phase 1: Planning — decomposing query...', '');
+
+      // Planning indicator
+      addTimelineStep(0, 'Planning: Decomposing query into atomic steps', 'anthropic', 'running');
 
       const startTime = Date.now();
 
       try {
-        // Show planning step
-        addTimelineStep(0, 'Planning: Decomposing query into atomic steps', 'anthropic', 'running');
-        setStatus('active', 'Phase 1: Generating execution plan...', '');
-
         const response = await fetch(`${API_URL}/research`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, max_budget: budget }),
+          body: JSON.stringify({ task: query, max_budget: String(budget) }),
         });
 
         const data = await response.json();
         const totalDuration = Date.now() - startTime;
 
-        // Clear planning step, render actual steps
+        // Clear planning indicator, render actual steps
         document.getElementById('timeline').innerHTML = '';
 
         if (data.actions && data.actions.length > 0) {
+          let runningSpent = 0;
           data.actions.forEach((step, i) => {
+            const desc = getStepDesc(data, step);
+            const isPaymentDenied = step.status === 'payment_denied';
+
             addTimelineStep(
               i,
-              step.step_id ? `${step.tool}: ${getStepDesc(data, step)}` : step.description || `Step ${i}`,
+              desc,
               step.tool,
               step.status,
               step.actual_cost_usd,
               step.duration_ms,
-              step.payment_tx_hash
+              step.payment_tx_hash,
+              isPaymentDenied
+            );
+
+            if (step.status === 'completed') {
+              runningSpent += step.actual_cost_usd;
+            }
+
+            // Update budget meter for each step
+            updateBudgetMeter(
+              runningSpent,
+              budget,
+              i + 1,
+              data.actions.length
             );
           });
         }
 
-        // Status
+        // Final budget meter update
         const totalCost = data.results?.total_cost_usd || 0;
+        const stepsExecuted = data.results?.steps_executed || 0;
+        const stepsTotal = data.results?.steps_total || 0;
+        updateBudgetMeter(totalCost, budget, stepsExecuted, stepsTotal);
+
+        // Status
         if (data.status === 'completed') {
           setStatus('completed', 'Research complete', `$${totalCost.toFixed(4)}`);
         } else if (data.status === 'halted') {
-          setStatus('error', 'Halted — budget exhausted', `$${totalCost.toFixed(4)}`);
+          setStatus('error', 'Halted — budget exhausted or payment denied', `$${totalCost.toFixed(4)}`);
         } else {
           setStatus('error', data.notes || 'Error', '');
         }
 
-        // Render results
+        // Results
         if (data.results) {
           renderResults(data.results);
         }
 
         // Stats
         document.getElementById('statsBar').style.display = 'grid';
-        document.getElementById('statSteps').textContent = data.results?.steps_executed || 0;
+        document.getElementById('statSteps').textContent = stepsExecuted;
         document.getElementById('statCost').textContent = `$${totalCost.toFixed(4)}`;
         document.getElementById('statDuration').textContent = `${totalDuration}ms`;
         document.getElementById('statConfidence').textContent = (data.results?.confidence || '—').toUpperCase();
@@ -648,6 +893,24 @@
       }
     }
 
+    function updateBudgetMeter(spent, total, stepsCompleted, stepsTotal) {
+      document.getElementById('budgetSpent').textContent = `$${spent.toFixed(4)}`;
+      document.getElementById('budgetTotal').textContent = `$${total.toFixed(2)}`;
+
+      const pct = total > 0 ? Math.min((spent / total) * 100, 100) : 0;
+      const fill = document.getElementById('budgetBarFill');
+      fill.style.width = `${pct}%`;
+
+      if (pct > 80) {
+        fill.classList.add('danger');
+      } else {
+        fill.classList.remove('danger');
+      }
+
+      document.getElementById('stepsProgress').textContent = `${stepsCompleted} / ${stepsTotal} steps`;
+      document.getElementById('budgetPercent').textContent = `${pct.toFixed(1)}%`;
+    }
+
     function getStepDesc(data, step) {
       if (data.plan?.steps) {
         const planStep = data.plan.steps.find(s => s.id === step.step_id);
@@ -657,24 +920,31 @@
     }
 
     function setStatus(state, text, cost) {
-      const dot = document.getElementById('statusDot');
-      dot.className = `status-indicator ${state}`;
+      document.getElementById('statusDot').className = `status-indicator ${state}`;
       document.getElementById('statusText').textContent = text;
       document.getElementById('statusCost').textContent = cost;
     }
 
-    function addTimelineStep(index, desc, tool, status, cost, duration, tx) {
+    function addTimelineStep(index, desc, tool, status, cost, duration, tx, paymentDenied) {
       const timeline = document.getElementById('timeline');
       const step = document.createElement('div');
       step.className = 'timeline-step';
 
       const statusClass = status === 'running' ? 'running' :
-                          status === 'completed' ? 'completed' :
-                          status === 'failed' || status === 'payment_denied' ? 'failed' : 'pending';
+        status === 'completed' ? 'completed' :
+          status === 'payment_denied' ? 'denied' :
+            status === 'failed' ? 'failed' : 'pending';
 
       const icon = statusClass === 'completed' ? '✓' :
-                   statusClass === 'failed' ? '✗' :
-                   statusClass === 'running' ? '◌' : index;
+        statusClass === 'failed' || statusClass === 'denied' ? '✗' :
+          statusClass === 'running' ? '◌' : index;
+
+      let paymentBadge = '';
+      if (status === 'completed') {
+        paymentBadge = '<span class="payment-status approved">x402 ✓</span>';
+      } else if (status === 'payment_denied') {
+        paymentBadge = '<span class="payment-status denied">x402 DENIED</span>';
+      }
 
       step.innerHTML = `
         <div class="step-index ${statusClass}">${icon}</div>
@@ -684,9 +954,10 @@
             <span class="step-tool">${tool || ''}</span>
           </div>
           <div class="step-meta">
+            ${paymentBadge}
             ${cost !== undefined ? `<span class="cost">$${cost.toFixed(4)}</span>` : ''}
             ${duration !== undefined ? `<span class="duration">${duration}ms</span>` : ''}
-            ${tx ? `<span class="tx">tx: ${tx.slice(0, 16)}…</span>` : ''}
+            ${tx ? `<span class="tx">tx: ${tx.slice(0, 20)}…</span>` : ''}
           </div>
         </div>
       `;
@@ -695,7 +966,6 @@
 
     function renderResults(results) {
       const container = document.getElementById('resultsContainer');
-
       let html = `
         <div class="result-card">
           <div class="result-header">
@@ -728,7 +998,7 @@
 
       if (results.was_halted) {
         html += `<div class="result-section" style="padding: 12px; background: var(--red-dim); border-radius: 8px; border: 1px solid rgba(255,82,82,0.2);">
-          <span style="color: var(--red); font-family: var(--font-mono); font-size: 12px;">⚠ PARTIAL RESULTS — Execution halted due to budget constraints</span>
+          <span style="color: var(--red); font-family: var(--font-mono); font-size: 12px;">⚠ PARTIAL RESULTS — Execution halted (budget or payment denial)</span>
         </div>`;
       }
 
@@ -740,7 +1010,7 @@
       document.getElementById('jsonViewer').classList.toggle('visible');
     }
 
-    // Submit on Enter (Ctrl+Enter for textarea)
+    // Submit on Ctrl+Enter
     document.getElementById('query').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         submitResearch();
@@ -748,4 +1018,5 @@
     });
   </script>
 </body>
+
 </html>
