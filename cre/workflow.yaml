@@ -1,0 +1,162 @@
+# Pay-Per-Thought Agent — CRE Workflow Definition
+# Chainlink Runtime Environment orchestration for metered research execution
+#
+# This workflow defines a 3-phase research pipeline:
+#   1. Planning   — decompose query into atomic steps with cost estimates
+#   2. Execution  — x402-gated sequential step execution
+#   3. Synthesis  — aggregate results into structured JSON
+#
+# Deploy: cre workflow deploy
+# Activate: cre workflow activate
+# Simulate: cre workflow simulate
+
+name: pay-per-thought-agent
+version: "1.0.0"
+description: >
+  Autonomous research agent with x402 micropayment enforcement.
+  Every reasoning step is metered, authorized, and cryptographically verifiable.
+
+# ─── Triggers ──────────────────────────────────────────────────
+triggers:
+  # HTTP webhook trigger — receives research requests
+  - id: research_request
+    type: webhook
+    config:
+      method: POST
+      path: /research
+      schema:
+        type: object
+        required: [query, max_budget]
+        properties:
+          query:
+            type: string
+            description: "The research question to investigate"
+          max_budget:
+            type: number
+            description: "Maximum budget in USD for this research session"
+          session_id:
+            type: string
+            description: "Optional session identifier for tracking"
+
+  # Cron trigger — scheduled research jobs
+  - id: scheduled_research
+    type: cron
+    config:
+      schedule: "0 */6 * * *"  # Every 6 hours
+      enabled: false
+
+# ─── Workflow Nodes ────────────────────────────────────────────
+nodes:
+
+  # ── Phase 1: Planning ─────────────────────────────────────
+  - id: plan_generation
+    type: custom_compute
+    description: "Decompose research query into atomic execution steps"
+    inputs:
+      query: "$(triggers.research_request.body.query)"
+      max_budget: "$(triggers.research_request.body.max_budget)"
+    config:
+      handler: agent/planner
+      timeout: 30s
+    outputs:
+      execution_plan:
+        type: object
+        description: "Structured plan with steps and cost estimates"
+
+  # ── Phase 2: Payment Authorization ────────────────────────
+  - id: x402_budget_lock
+    type: evm_write
+    description: "Lock total estimated budget in x402 payment contract"
+    depends_on: [plan_generation]
+    inputs:
+      contract_address: "$(env.X402_CONTRACT_ADDRESS)"
+      method: "lockBudget"
+      args:
+        session_id: "$(plan_generation.outputs.execution_plan.session_id)"
+        total_amount: "$(plan_generation.outputs.execution_plan.total_estimated_cost)"
+        step_count: "$(plan_generation.outputs.execution_plan.step_count)"
+    config:
+      chain_id: 11155111  # Sepolia
+      gas_limit: 300000
+
+  # ── Phase 2: Metered Execution ────────────────────────────
+  - id: step_executor
+    type: custom_compute
+    description: "Execute each planned step with x402 payment gate"
+    depends_on: [x402_budget_lock]
+    inputs:
+      execution_plan: "$(plan_generation.outputs.execution_plan)"
+      budget_lock_tx: "$(x402_budget_lock.outputs.tx_hash)"
+    config:
+      handler: agent/executor
+      timeout: 300s
+      max_retries: 1
+    outputs:
+      step_results:
+        type: array
+        description: "Results from each executed step"
+      total_spent:
+        type: number
+        description: "Total amount spent across all steps"
+      halted:
+        type: boolean
+        description: "Whether execution was halted due to budget"
+
+  # ── Phase 3: Synthesis ────────────────────────────────────
+  - id: result_synthesis
+    type: custom_compute
+    description: "Aggregate step results into final structured output"
+    depends_on: [step_executor]
+    inputs:
+      step_results: "$(step_executor.outputs.step_results)"
+      original_query: "$(triggers.research_request.body.query)"
+      total_spent: "$(step_executor.outputs.total_spent)"
+      was_halted: "$(step_executor.outputs.halted)"
+    config:
+      handler: agent/synthesizer
+      timeout: 60s
+    outputs:
+      final_result:
+        type: object
+        description: "Verified, aggregated research result"
+
+  # ── Settlement: Release remaining budget ──────────────────
+  - id: x402_settlement
+    type: evm_write
+    description: "Settle payment — release unused budget back to user"
+    depends_on: [result_synthesis]
+    inputs:
+      contract_address: "$(env.X402_CONTRACT_ADDRESS)"
+      method: "settleBudget"
+      args:
+        session_id: "$(plan_generation.outputs.execution_plan.session_id)"
+        total_spent: "$(step_executor.outputs.total_spent)"
+    config:
+      chain_id: 11155111
+      gas_limit: 200000
+
+# ─── Callbacks ─────────────────────────────────────────────────
+callbacks:
+  - trigger: research_request
+    handler: result_synthesis
+    response:
+      status_code: 200
+      body: "$(result_synthesis.outputs.final_result)"
+
+# ─── Environment ───────────────────────────────────────────────
+environment:
+  secrets:
+    - ANTHROPIC_API_KEY
+    - TAVILY_API_KEY
+    - PRIVATE_KEY
+  variables:
+    - X402_CONTRACT_ADDRESS
+    - PAYMENT_TOKEN_ADDRESS
+    - RPC_URL
+
+# ─── Capabilities Used ────────────────────────────────────────
+capabilities:
+  - custom_compute    # Agent logic execution
+  - evm_write         # On-chain payment interactions
+  - evm_read          # Balance checks
+  - http_fetch        # External API calls (Tavily, Anthropic)

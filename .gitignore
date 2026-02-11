@@ -1,0 +1,42 @@
+# ─── Environment & Secrets ────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets.yaml
+*.key
+*.pem
+*.secret
+*.p12
+
+# ─── Node / TypeScript ───────────────────────────────────
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.npm
+
+# ─── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ─── Go ──────────────────────────────────────────────────
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ─── IDE ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── CRE CLI Nested Init Output ─────────────────────────
+pay-per-thought-agent/

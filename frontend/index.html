@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pay-Per-Thought Agent</title>
+  <meta name="description" content="Autonomous research agent with x402 micropayment enforcement. Metered cognition, verifiable execution." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #181825;
+      --bg-input: #1e1e2e;
+      --border: #2a2a3e;
+      --border-active: #6c5ce7;
+      --text-primary: #e0e0ee;
+      --text-secondary: #8888a0;
+      --text-muted: #555570;
+      --accent: #6c5ce7;
+      --accent-glow: rgba(108, 92, 231, 0.3);
+      --green: #00e676;
+      --green-dim: rgba(0, 230, 118, 0.15);
+      --red: #ff5252;
+      --red-dim: rgba(255, 82, 82, 0.15);
+      --yellow: #ffd740;
+      --yellow-dim: rgba(255, 215, 64, 0.15);
+      --cyan: #18ffff;
+      --cyan-dim: rgba(24, 255, 255, 0.1);
+      --radius: 12px;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background Grid ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108, 92, 231, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108, 92, 231, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* ── Header ─── */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--cyan-dim);
+      border: 1px solid rgba(24, 255, 255, 0.2);
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 20px;
+    }
+
+    .header-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--cyan);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--cyan); }
+      50% { opacity: 0.4; box-shadow: none; }
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e0e0ee 0%, #6c5ce7 50%, #18ffff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Input Card ─── */
+    .input-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 32px;
+      transition: border-color 0.3s;
+    }
+
+    .input-card:focus-within {
+      border-color: var(--border-active);
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+    }
+
+    .input-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-group.budget {
+      flex: 0 0 140px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: var(--font-mono);
+    }
+
+    input, textarea {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 56px;
+    }
+
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6c5ce7, #5a4bd1);
+      color: white;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 30px var(--accent-glow);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Status Bar ─── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-indicator.active { background: var(--yellow); animation: pulse 1s infinite; }
+    .status-indicator.completed { background: var(--green); }
+    .status-indicator.error { background: var(--red); }
+
+    .status-text { color: var(--text-secondary); flex: 1; }
+    .status-cost { color: var(--green); font-weight: 600; }
+
+    /* ── Step Timeline ─── */
+    .timeline { margin-bottom: 32px; }
+
+    .timeline-step {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(42, 42, 62, 0.5);
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-index {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .step-index.pending { background: var(--bg-input); color: var(--text-muted); border: 1px solid var(--border); }
+    .step-index.running { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255, 215, 64, 0.3); }
+    .step-index.completed { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0, 230, 118, 0.3); }
+    .step-index.failed { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255, 82, 82, 0.3); }
+
+    .step-content { flex: 1; }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .step-tool {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--bg-input);
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+
+    .step-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 16px;
+    }
+
+    .step-meta .cost { color: var(--green); }
+    .step-meta .duration { color: var(--text-secondary); }
+    .step-meta .tx { color: var(--accent); }
+
+    /* ── Result Card ─── */
+    .result-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .result-header {
+      padding: 16px 24px;
+      background: linear-gradient(135deg, rgba(108, 92, 231, 0.1), rgba(24, 255, 255, 0.05));
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .result-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-primary);
+    }
+
+    .confidence-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .confidence-badge.high { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0, 230, 118, 0.3); }
+    .confidence-badge.medium { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255, 215, 64, 0.3); }
+    .confidence-badge.low { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255, 82, 82, 0.3); }
+
+    .result-body {
+      padding: 24px;
+    }
+
+    .result-answer {
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+    }
+
+    .result-section {
+      margin-bottom: 16px;
+    }
+
+    .result-section h4 {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .result-section ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .result-section li {
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 4px 0 4px 16px;
+      position: relative;
+    }
+
+    .result-section li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    /* ── JSON Viewer ─── */
+    .json-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .json-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .json-viewer {
+      display: none;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 16px;
+      overflow-x: auto;
+    }
+
+    .json-viewer.visible { display: block; }
+
+    .json-viewer pre {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── Footer Stats ─── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Spinner ─── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ─── */
+    @media (max-width: 640px) {
+      .input-row { flex-direction: column; }
+      .input-group.budget { flex: 1; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-badge">
+        <span class="dot"></span>
+        CRE × x402 Micropayments
+      </div>
+      <h1>Pay-Per-Thought Agent</h1>
+      <p class="subtitle">
+        Autonomous research with metered cognition. Every step is authorized, executed, and verifiable.
+      </p>
+    </div>
+
+    <!-- Input -->
+    <div class="input-card">
+      <div class="input-row">
+        <div class="input-group">
+          <label for="query">Research Query</label>
+          <textarea id="query" placeholder="e.g. What is the current TVL of Aave on Ethereum mainnet?"></textarea>
+        </div>
+        <div class="input-group budget">
+          <label for="budget">Max Budget ($)</label>
+          <input type="number" id="budget" value="0.50" min="0.01" max="100" step="0.01" />
+        </div>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitResearch()">
+          Execute
+        </button>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar" id="statusBar" style="display: none;">
+      <div class="status-indicator" id="statusDot"></div>
+      <span class="status-text" id="statusText">Idle</span>
+      <span class="status-cost" id="statusCost"></span>
+    </div>
+
+    <!-- Step Timeline -->
+    <div class="timeline" id="timeline"></div>
+
+    <!-- Results -->
+    <div id="resultsContainer"></div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar" style="display: none;">
+      <div class="stat">
+        <div class="stat-value" id="statSteps">0</div>
+        <div class="stat-label">Steps</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statCost">$0.00</div>
+        <div class="stat-label">Total Cost</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statDuration">0ms</div>
+        <div class="stat-label">Duration</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statConfidence">—</div>
+        <div class="stat-label">Confidence</div>
+      </div>
+    </div>
+
+    <!-- Raw JSON -->
+    <div style="text-align: center; margin-top: 24px;">
+      <button class="json-toggle" id="jsonToggle" style="display: none;" onclick="toggleJSON()">
+        ◆ View Raw JSON Response
+      </button>
+    </div>
+    <div class="json-viewer" id="jsonViewer">
+      <pre id="jsonContent"></pre>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:8000';
+
+    async function submitResearch() {
+      const query = document.getElementById('query').value.trim();
+      const budget = parseFloat(document.getElementById('budget').value);
+      const btn = document.getElementById('submitBtn');
+
+      if (!query) return;
+
+      // Reset UI
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+      document.getElementById('timeline').innerHTML = '';
+      document.getElementById('resultsContainer').innerHTML = '';
+      document.getElementById('jsonViewer').classList.remove('visible');
+      document.getElementById('jsonToggle').style.display = 'none';
+      document.getElementById('statsBar').style.display = 'none';
+
+      // Show status
+      const statusBar = document.getElementById('statusBar');
+      statusBar.style.display = 'flex';
+      setStatus('active', 'Initiating research pipeline...', '');
+
+      const startTime = Date.now();
+
+      try {
+        // Show planning step
+        addTimelineStep(0, 'Planning: Decomposing query into atomic steps', 'anthropic', 'running');
+        setStatus('active', 'Phase 1: Generating execution plan...', '');
+
+        const response = await fetch(`${API_URL}/research`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, max_budget: budget }),
+        });
+
+        const data = await response.json();
+        const totalDuration = Date.now() - startTime;
+
+        // Clear planning step, render actual steps
+        document.getElementById('timeline').innerHTML = '';
+
+        if (data.actions && data.actions.length > 0) {
+          data.actions.forEach((step, i) => {
+            addTimelineStep(
+              i,
+              step.step_id ? `${step.tool}: ${getStepDesc(data, step)}` : step.description || `Step ${i}`,
+              step.tool,
+              step.status,
+              step.actual_cost_usd,
+              step.duration_ms,
+              step.payment_tx_hash
+            );
+          });
+        }
+
+        // Status
+        const totalCost = data.results?.total_cost_usd || 0;
+        if (data.status === 'completed') {
+          setStatus('completed', 'Research complete', `$${totalCost.toFixed(4)}`);
+        } else if (data.status === 'halted') {
+          setStatus('error', 'Halted — budget exhausted', `$${totalCost.toFixed(4)}`);
+        } else {
+          setStatus('error', data.notes || 'Error', '');
+        }
+
+        // Render results
+        if (data.results) {
+          renderResults(data.results);
+        }
+
+        // Stats
+        document.getElementById('statsBar').style.display = 'grid';
+        document.getElementById('statSteps').textContent = data.results?.steps_executed || 0;
+        document.getElementById('statCost').textContent = `$${totalCost.toFixed(4)}`;
+        document.getElementById('statDuration').textContent = `${totalDuration}ms`;
+        document.getElementById('statConfidence').textContent = (data.results?.confidence || '—').toUpperCase();
+
+        // JSON
+        document.getElementById('jsonContent').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('jsonToggle').style.display = 'inline-block';
+
+      } catch (err) {
+        setStatus('error', `Error: ${err.message}`, '');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Execute';
+      }
+    }
+
+    function getStepDesc(data, step) {
+      if (data.plan?.steps) {
+        const planStep = data.plan.steps.find(s => s.id === step.step_id);
+        if (planStep) return planStep.description;
+      }
+      return step.step_id;
+    }
+
+    function setStatus(state, text, cost) {
+      const dot = document.getElementById('statusDot');
+      dot.className = `status-indicator ${state}`;
+      document.getElementById('statusText').textContent = text;
+      document.getElementById('statusCost').textContent = cost;
+    }
+
+    function addTimelineStep(index, desc, tool, status, cost, duration, tx) {
+      const timeline = document.getElementById('timeline');
+      const step = document.createElement('div');
+      step.className = 'timeline-step';
+
+      const statusClass = status === 'running' ? 'running' :
+                          status === 'completed' ? 'completed' :
+                          status === 'failed' || status === 'payment_denied' ? 'failed' : 'pending';
+
+      const icon = statusClass === 'completed' ? '✓' :
+                   statusClass === 'failed' ? '✗' :
+                   statusClass === 'running' ? '◌' : index;
+
+      step.innerHTML = `
+        <div class="step-index ${statusClass}">${icon}</div>
+        <div class="step-content">
+          <div class="step-header">
+            <span class="step-desc">${desc}</span>
+            <span class="step-tool">${tool || ''}</span>
+          </div>
+          <div class="step-meta">
+            ${cost !== undefined ? `<span class="cost">$${cost.toFixed(4)}</span>` : ''}
+            ${duration !== undefined ? `<span class="duration">${duration}ms</span>` : ''}
+            ${tx ? `<span class="tx">tx: ${tx.slice(0, 16)}…</span>` : ''}
+          </div>
+        </div>
+      `;
+      timeline.appendChild(step);
+    }
+
+    function renderResults(results) {
+      const container = document.getElementById('resultsContainer');
+
+      let html = `
+        <div class="result-card">
+          <div class="result-header">
+            <h3>◆ Synthesis Result</h3>
+            <span class="confidence-badge ${results.confidence}">${results.confidence}</span>
+          </div>
+          <div class="result-body">
+            <div class="result-answer">${results.answer}</div>
+      `;
+
+      if (results.key_findings?.length) {
+        html += `<div class="result-section"><h4>Key Findings</h4><ul>`;
+        results.key_findings.forEach(f => {
+          html += `<li><strong>${f.claim}</strong> — ${f.evidence} <em>(${f.source})</em></li>`;
+        });
+        html += `</ul></div>`;
+      }
+
+      if (results.assumptions?.length) {
+        html += `<div class="result-section"><h4>Assumptions</h4><ul>`;
+        results.assumptions.forEach(a => { html += `<li>${a}</li>`; });
+        html += `</ul></div>`;
+      }
+
+      if (results.limitations?.length) {
+        html += `<div class="result-section"><h4>Limitations</h4><ul>`;
+        results.limitations.forEach(l => { html += `<li>${l}</li>`; });
+        html += `</ul></div>`;
+      }
+
+      if (results.was_halted) {
+        html += `<div class="result-section" style="padding: 12px; background: var(--red-dim); border-radius: 8px; border: 1px solid rgba(255,82,82,0.2);">
+          <span style="color: var(--red); font-family: var(--font-mono); font-size: 12px;">⚠ PARTIAL RESULTS — Execution halted due to budget constraints</span>
+        </div>`;
+      }
+
+      html += `</div></div>`;
+      container.innerHTML = html;
+    }
+
+    function toggleJSON() {
+      document.getElementById('jsonViewer').classList.toggle('visible');
+    }
+
+    // Submit on Enter (Ctrl+Enter for textarea)
+    document.getElementById('query').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        submitResearch();
+      }
+    });
+  </script>
+</body>
+</html>
