@@ -1,94 +1,258 @@
-# Pay-Per-Thought Autonomous Research Agent
+# Pay-Per-Thought Agent
 
-A Chainlink CRE-orchestrated research agent with x402 micropayment enforcement. Every reasoning step is metered, authorized, and verifiable.
+**Autonomous research agent with x402 micropayment enforcement.**  
+Every reasoning step is metered, authorized on-chain, and cryptographically verifiable.
+
+Built for the [Chainlink CRE Hackathon](https://chain.link).
+
+---
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     FastAPI Server (/research)                  │
-├─────────────────────────────────────────────────────────────────┤
+│                    FastAPI Server (:8000)                        │
 │                                                                 │
-│  ┌──────────┐    ┌───────────────┐    ┌──────────────┐         │
-│  │  Phase 1  │───▶│    Phase 2     │───▶│   Phase 3    │        │
-│  │ Planning  │    │   Execution   │    │  Synthesis   │        │
-│  │           │    │               │    │              │        │
-│  │ - Decompose│    │ For each step:│    │ - Aggregate  │        │
-│  │ - Estimate │    │ - x402 auth   │    │ - Source     │        │
-│  │ - Budget   │    │ - Execute     │    │ - Confidence │        │
-│  └──────────┘    │ - Persist     │    └──────────────┘        │
-│                  └───────────────┘                              │
-│                         │                                       │
-│          ┌──────────────┼──────────────┐                       │
-│          ▼              ▼              ▼                       │
-│  ┌──────────────┐ ┌──────────┐ ┌──────────────┐              │
-│  │ Claude Opus  │ │  Tavily  │ │ Blockchain   │              │
-│  │ (Reasoning)  │ │ (Search) │ │ (RPC Calls)  │              │
-│  └──────────────┘ └──────────┘ └──────────────┘              │
+│  POST /research  ─────────────────────────────────────────────  │
+│       │                                                         │
+│       ▼                                                         │
+│  ┌──────────┐    ┌───────────────┐    ┌──────────────┐          │
+│  │ PLANNING │───▶│   EXECUTION   │───▶│  SYNTHESIS   │          │
+│  │          │    │               │    │              │          │
+│  │ Claude   │    │ For each step:│    │ Claude       │          │
+│  │ decompose│    │  1. x402 auth │    │ aggregate    │          │
+│  │ query    │    │  2. tool call │    │ evidence     │          │
+│  │ → steps  │    │  3. confirm   │    │ → JSON       │          │
+│  └──────────┘    └───────┬───────┘    └──────────────┘          │
+│                          │                                      │
+│                ┌─────────▼─────────┐                            │
+│                │  X402PaymentGate  │                             │
+│                │  (Sepolia EVM)    │                             │
+│                │                   │                             │
+│                │ lockBudget()      │                             │
+│                │ authorizePayment()│                             │
+│                │ confirmExecution()│                             │
+│                │ settleBudget()    │                             │
+│                └───────────────────┘                             │
 │                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│              CRE Workflow Orchestration Layer                   │
-├─────────────────────────────────────────────────────────────────┤
-│         x402 Payment Gate Contract (ERC-20 Based)              │
+│  Tools:  Claude (reasoning)  │  Tavily (search)  │  RPC (chain) │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                CRE Workflow (workflow.yaml)                      │
+│                                                                 │
+│  trigger → planning_node → budget_lock_node → execution_node    │
+│            → synthesis_node → settlement_node                   │
+│                          ↘ halt_node (on error)                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Directory Structure
+## Project Structure
 
 ```
 pay-per-thought-agent/
-├── agent/          # Core agent logic (TypeScript)
-│   ├── types.ts
-│   ├── planner.ts
-│   ├── executor.ts
-│   └── synthesizer.ts
-├── api/            # FastAPI server (Python)
-│   ├── main.py
-│   ├── config.py
-│   └── requirements.txt
-├── contracts/      # x402 payment contract (Solidity)
-│   ├── IX402PaymentGate.sol
-│   └── X402PaymentGate.sol
-├── cre/            # CRE workflow definition
-│   └── workflow.yaml
-├── frontend/       # Demo UI
-│   └── index.html
-├── .env.example
-└── README.md
+├── agent/                      # Core agent logic (Python)
+│   ├── planning.py             # Phase 1: Query decomposition
+│   ├── executor.py             # Phase 2: x402-gated execution
+│   └── synthesizer.py          # Phase 3: Result aggregation
+├── api/                        # FastAPI server
+│   ├── main.py                 # POST /research endpoint
+│   ├── config.py               # Environment configuration
+│   └── requirements.txt        # Python dependencies
+├── contracts/                  # Solidity smart contracts
+│   ├── X402PaymentGate.sol     # Payment gate contract
+│   ├── IX402PaymentGate.sol    # Interface
+│   ├── script/                 # Foundry deployment scripts
+│   │   ├── Deploy.s.sol
+│   │   └── ExampleUsage.s.sol
+│   ├── test/                   # Foundry unit tests
+│   │   └── X402PaymentGate.t.sol
+│   └── README.md               # Contract documentation
+├── cre/                        # Chainlink CRE workflow
+│   ├── workflow.yaml           # Executable workflow definition
+│   └── pay-per-thought-workflow/  # CRE SDK template
+├── frontend/                   # Demo UI
+│   └── index.html              # Single-page app
+├── tests/                      # Python tests
+│   └── test_agent_pipeline.py  # Integration tests
+├── examples/                   # Example run outputs
+│   └── run-1/                  # Complete example session
+├── docs/                       # Documentation
+│   └── demo.md                 # 3-minute demo script
+├── .env.example                # Environment variable template
+└── README.md                   # This file
 ```
 
-## Setup
+## Quick Start
 
-1. Install dependencies:
-   ```bash
-   cd api && pip install -r requirements.txt
-   ```
-
-2. Copy `.env.example` to `.env` and fill in your keys:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Start the API server:
-   ```bash
-   cd api && uvicorn main:app --reload --port 8000
-   ```
-
-4. Send a research request:
-   ```bash
-   curl -X POST http://localhost:8000/research \
-     -H "Content-Type: application/json" \
-     -d '{"query": "What is the current TVL of Aave?", "max_budget": 0.50}'
-   ```
-
-## CRE Deployment
+### 1. Clone
 
 ```bash
-cre login
-cre init -p pay-per-thought-agent
-cre workflow deploy
-cre workflow activate
+git clone https://github.com/phessophissy/pay-per-thought-agent.git
+cd pay-per-thought-agent
 ```
+
+### 2. Environment Variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your keys:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `ANTHROPIC_API_KEY` | Claude API key | ✅ |
+| `TAVILY_API_KEY` | Tavily search API key | ✅ |
+| `RPC_URL` | Ethereum Sepolia RPC | ✅ |
+| `X402_CONTRACT_ADDRESS` | Deployed payment gate | For live x402 |
+| `PAYMENT_TOKEN_ADDRESS` | ERC-20 token address | For live x402 |
+| `PRIVATE_KEY` | Operator private key | For live x402 |
+| `X402_LIVE` | Set to `true` for on-chain | Default: `false` |
+
+### 3. Install Python Dependencies
+
+```bash
+pip install -r api/requirements.txt
+```
+
+### 4. Run the Server
+
+```bash
+cd api
+uvicorn main:app --reload --port 8000
+```
+
+### 5. Open Demo Frontend
+
+```bash
+# In another terminal
+cd frontend
+python -m http.server 3000
+```
+
+Open `http://localhost:3000` in your browser.
+
+### 6. Test via CLI
+
+```bash
+curl -X POST http://localhost:8000/research \
+  -H "Content-Type: application/json" \
+  -d '{"task": "What is the current TVL of Aave v3?", "max_budget": "0.50"}'
+```
+
+## Deploy x402 Contract
+
+### Prerequisites
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+forge install foundry-rs/forge-std --no-commit
+```
+
+### Deploy to Sepolia
+
+```bash
+export RPC_URL="https://ethereum-sepolia-rpc.publicnode.com"
+export PRIVATE_KEY="0x..."
+export PAYMENT_TOKEN_ADDRESS="0x..."
+export OPERATOR_ADDRESS="0x..."
+
+forge script contracts/script/Deploy.s.sol:DeployPaymentGate \
+  --rpc-url $RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast
+```
+
+## Deploy CRE Workflow
+
+```bash
+# Install CRE CLI
+export PATH="$HOME/.local/bin:$PATH"
+cre login
+
+# Deploy
+cre workflow deploy -R . --target staging-settings
+
+# Activate
+cre workflow activate --workflow-name pay-per-thought-workflow --target staging-settings
+
+# Run
+cre workflow run --workflow-name pay-per-thought-workflow \
+  --target staging-settings \
+  --payload '{"query": "What is Aave v3 TVL?", "max_budget_usd": 0.50}'
+```
+
+## Run Tests
+
+### Solidity (Foundry)
+
+```bash
+forge test --match-contract X402PaymentGateTest -vvv
+```
+
+### Python (pytest)
+
+```bash
+pip install pytest
+pytest tests/test_agent_pipeline.py -v
+```
+
+## API Reference
+
+### `POST /research`
+
+**Request:**
+```json
+{
+  "task": "What is the current TVL of Aave v3 on Ethereum?",
+  "max_budget": "0.50"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "completed",
+  "session_id": "abc123...",
+  "query": "...",
+  "plan": { "steps": [...], "total_estimated_cost": 0.181 },
+  "actions": [
+    {
+      "step_id": "step_0_...",
+      "status": "completed",
+      "tool": "tavily",
+      "actual_cost_usd": 0.01,
+      "payment_tx_hash": "0x...",
+      "sources": ["https://..."]
+    }
+  ],
+  "results": {
+    "answer": "...",
+    "confidence": "high",
+    "key_findings": [...],
+    "total_cost_usd": 0.181
+  }
+}
+```
+
+### `GET /health`
+
+Returns server status and configuration validation.
+
+## How It Works
+
+1. **User submits research query** with a budget cap
+2. **Planning**: Claude decomposes the query into 3-7 atomic steps, each with a tool assignment and cost estimate
+3. **Budget Lock**: Total estimated cost is locked in the x402 contract (ERC-20 escrow)
+4. **Execution**: For each step:
+   - `authorizePayment()` — x402 on-chain approval
+   - Tool invocation (Claude / Tavily / RPC)
+   - `confirmExecution()` — finalize on-chain payment
+   - If tool fails → `refund()` — return step cost
+5. **Synthesis**: Claude aggregates all step evidence into a structured JSON answer with confidence scoring
+6. **Settlement**: `settleBudget()` — returns unused funds to the user
 
 ## License
 
