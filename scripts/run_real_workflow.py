@@ -32,8 +32,8 @@ from agent.planning import generate_plan
 from agent.executor import execute_plan
 from agent.synthesizer import synthesize_results
 
-# Force simulation mode for payments (unless user explicitly set it to true in env)
-# We default to false here to ensure the script runs out-of-the-box for the user
+# We default to false here to ensure the script runs out-of-the-box for new users,
+# but if the user has configured X402_LIVE=true in .env, we respect it.
 if os.environ.get("X402_LIVE", "").lower() != "true":
     os.environ["X402_LIVE"] = "false"
 
