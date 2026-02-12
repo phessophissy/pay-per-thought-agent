@@ -82,8 +82,9 @@ def _approve_step_onchain(session_id: str, step_id: str, amount: float) -> dict:
                 address=Web3.to_checksum_address(contract_address), abi=abi
             )
 
-            session_bytes = Web3.to_bytes(hexstr=session_id.ljust(64, "0")[:64])
-            step_bytes = Web3.to_bytes(hexstr=step_id.encode().hex().ljust(64, "0")[:64])
+            # Use Keccak hash for consistent ID mapping
+            session_bytes = w3.keccak(text=session_id)
+            step_bytes = w3.keccak(text=step_id)
             amount_wei = int(amount * 1e18)
 
             account = w3.eth.account.from_key(private_key)
@@ -181,7 +182,8 @@ def _lock_budget_onchain(session_id: str, total_amount: float, step_count: int) 
 
             contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
             
-            session_bytes = Web3.to_bytes(hexstr=session_id.ljust(64, "0")[:64])
+            # Use Keccak hash for consistent ID mapping
+            session_bytes = w3.keccak(text=session_id)
             amount_wei = int(total_amount * 1e18)
             
             account = w3.eth.account.from_key(private_key)
