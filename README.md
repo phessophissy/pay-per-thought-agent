@@ -136,14 +136,22 @@ Run a full workflow simulation without live API keys (uses mocks):
 python3 scripts/simulate_workflow.py
 ```
 
-### 6. Run the Server
+### 6. Run Real Workflow (Terminal)
+
+To run the full agent logic with **REAL** API calls (Gemini, Tavily) but **simulated** payments (no wallet needed):
+
+```bash
+python3 scripts/run_real_workflow.py "Your query here"
+```
+
+### 7. Run the Server
 
 ```bash
 cd api
 uvicorn main:app --reload --port 8000
 ```
 
-### 7. Open Demo Frontend
+### 8. Open Demo Frontend
 
 ```bash
 # In another terminal
