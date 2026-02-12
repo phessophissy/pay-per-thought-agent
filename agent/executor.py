@@ -31,7 +31,12 @@ import httpx
 # In production, these methods call the deployed X402PaymentGate
 # contract via web3/ethers. For demo/testing, they use simulation.
 
-USE_LIVE_CONTRACT = os.environ.get("X402_LIVE", "false").lower() == "true"
+# ─── x402 Contract Interface ─────────────────────────────────
+# In production, these methods call the deployed X402PaymentGate
+# contract via web3/ethers. For demo/testing, they use simulation.
+
+def _use_live_contract() -> bool:
+    return os.environ.get("X402_LIVE", "false").lower() == "true"
 
 
 def _approve_step_onchain(session_id: str, step_id: str, amount: float) -> dict:
@@ -39,7 +44,7 @@ def _approve_step_onchain(session_id: str, step_id: str, amount: float) -> dict:
     Call X402PaymentGate.authorizePayment() on-chain.
     Returns authorization result.
     """
-    if USE_LIVE_CONTRACT:
+    if _use_live_contract():
         try:
             from web3 import Web3
 
@@ -87,18 +92,24 @@ def _approve_step_onchain(session_id: str, step_id: str, amount: float) -> dict:
             ).build_transaction({
                 "from": account.address,
                 "nonce": w3.eth.get_transaction_count(account.address),
-                "gas": 200000,
+                "gas": 2000000, # Increased gas limit for Arbitrum
+                "gasPrice": w3.eth.gas_price,
             })
 
             signed = account.sign_transaction(tx)
             tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            try:
+                receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                return {
+                    "authorized": receipt["status"] == 1,
+                    "tx_hash": tx_hash.hex(),
+                    "error": None if receipt["status"] == 1 else "Transaction reverted",
+                }
+            except Exception as e:
+                 # On timeout, we might assume success or fail safely? 
+                 # Let's return error but with hash
+                 return {"authorized": False, "tx_hash": tx_hash.hex(), "error": f"Timeout/Error: {str(e)}"}
 
-            return {
-                "authorized": receipt["status"] == 1,
-                "tx_hash": tx_hash.hex(),
-                "error": None if receipt["status"] == 1 else "Transaction reverted",
-            }
         except Exception as e:
             return {"authorized": False, "tx_hash": None, "error": str(e)}
     else:
@@ -115,9 +126,10 @@ def _consume_step_onchain(session_id: str, step_id: str) -> dict:
     Call X402PaymentGate.confirmExecution() on-chain.
     Finalizes the payment for a completed step.
     """
-    if USE_LIVE_CONTRACT:
+    if _use_live_contract():
         # Production: call confirmExecution on-chain
-        # (implementation mirrors _approve_step_onchain pattern)
+        # (implementation mirrors _approve_step_onchain pattern, omitted for brevity)
+        # For now, we simulate success to avoid double-charging or complex logic in hackathon
         return {
             "confirmed": True,
             "tx_hash": f"live_confirm_{step_id}",
@@ -134,7 +146,7 @@ def _remaining_budget_onchain(session_id: str) -> float:
     Call X402PaymentGate.getRemainingBudget() on-chain.
     Returns remaining budget in USD.
     """
-    if USE_LIVE_CONTRACT:
+    if _use_live_contract():
         # Production: read from contract
         return 999.0  # placeholder
     else:
