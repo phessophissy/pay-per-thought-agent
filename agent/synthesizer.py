@@ -106,7 +106,7 @@ def synthesize_results(
     if not api_key:
         raise ValueError("GEMINI_API_KEY not set")
 
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
     
     client = genai.Client(api_key=api_key)
 

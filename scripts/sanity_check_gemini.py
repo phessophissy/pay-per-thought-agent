@@ -25,7 +25,7 @@ def main():
     
     try:
         client = genai.Client(api_key=api_key)
-        model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+        model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
         
         print(f"🔄 Testing connection to model: {model_name}...")
         

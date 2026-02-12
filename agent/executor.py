@@ -147,7 +147,7 @@ def _remaining_budget_onchain(session_id: str) -> float:
 def _execute_gemini(step: dict, query: str, prior_results: list[dict]) -> dict:
     """Execute a reasoning step via Gemini."""
     api_key = os.environ.get("GEMINI_API_KEY", "")
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
     context = "\n".join(
         f"[Step {r['index']}]: {json.dumps(r['output'], default=str)}"
