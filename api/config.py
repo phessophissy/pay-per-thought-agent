@@ -11,9 +11,9 @@ load_dotenv()
 class Config:
     """Environment-based configuration."""
 
-    # Anthropic
-    ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+    # Gemini
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
 
     # Tavily
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
@@ -31,17 +31,17 @@ class Config:
     PRIVATE_KEY: str = os.getenv("PRIVATE_KEY", "")
 
     # Costs (USD)
-    COST_ANTHROPIC: float = 0.08
+    COST_GEMINI: float = 0.005  # Cheaper than Claude
     COST_TAVILY: float = 0.01
     COST_BLOCKCHAIN_RPC: float = 0.001
-    COST_REASONING: float = 0.05
+    COST_REASONING: float = 0.02
 
     @classmethod
     def validate(cls) -> list[str]:
         """Return list of missing required config keys."""
         missing = []
-        if not cls.ANTHROPIC_API_KEY:
-            missing.append("ANTHROPIC_API_KEY")
+        if not cls.GEMINI_API_KEY:
+            missing.append("GEMINI_API_KEY")
         if not cls.TAVILY_API_KEY:
             missing.append("TAVILY_API_KEY")
         return missing

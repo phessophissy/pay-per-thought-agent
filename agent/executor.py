@@ -153,6 +153,63 @@ def _remaining_budget_onchain(session_id: str) -> float:
         return 999.0  # simulation: unlimited
 
 
+def _lock_budget_onchain(session_id: str, total_amount: float, step_count: int) -> dict:
+    """
+    Call X402PaymentGate.lockBudget() to initialize session.
+    """
+    if _use_live_contract():
+        try:
+            from web3 import Web3
+            rpc_url = os.environ.get("RPC_URL", "")
+            contract_address = os.environ.get("X402_CONTRACT_ADDRESS", "")
+            private_key = os.environ.get("PRIVATE_KEY") or os.environ.get("CRE_ETH_PRIVATE_KEY", "")
+
+            w3 = Web3(Web3.HTTPProvider(rpc_url))
+            
+            # ABI for lockBudget
+            abi = [{
+                "inputs": [
+                    {"name": "sessionId", "type": "bytes32"},
+                    {"name": "totalAmount", "type": "uint256"},
+                    {"name": "stepCount", "type": "uint256"}
+                ],
+                "name": "lockBudget",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }]
+
+            contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi)
+            
+            session_bytes = Web3.to_bytes(hexstr=session_id.ljust(64, "0")[:64])
+            amount_wei = int(total_amount * 1e18)
+            
+            account = w3.eth.account.from_key(private_key)
+            
+            tx = contract.functions.lockBudget(
+                session_bytes, amount_wei, step_count
+            ).build_transaction({
+                "from": account.address,
+                "nonce": w3.eth.get_transaction_count(account.address),
+                "gas": 2000000,
+                "gasPrice": int(w3.eth.gas_price * 1.5),
+            })
+            
+            signed = account.sign_transaction(tx)
+            tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+            
+            return {
+                "success": receipt["status"] == 1,
+                "tx_hash": tx_hash.hex(),
+                "error": None if receipt["status"] == 1 else "Transaction reverted"
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": True, "tx_hash": "sim_lock"}
+
+
 # ─── Tool Executors ───────────────────────────────────────────
 
 
@@ -289,9 +346,29 @@ def execute_plan(plan: dict) -> dict:
     query = plan["query"]
     steps = plan["steps"]
 
+    # ── Step 0: Lock Total Budget On-Chain ──
+    total_estimated = sum(s["estimated_cost_usd"] for s in steps)
+    if total_estimated > 0:
+        print(f"Locking budget: ${total_estimated} for {len(steps)} steps...")
+        lock_res = _lock_budget_onchain(session_id, total_estimated, len(steps))
+        if not lock_res["success"]:
+            print(f"CRITICAL: Failed to lock budget. {lock_res.get('error')}")
+            # We halt immediately if we can't lock budget in live mode
+            if _use_live_contract():
+                return {
+                   "step_results": [],
+                   "total_spent_usd": 0.0,
+                   "was_halted": True,
+                   "error": f"Budget Lock Failed: {lock_res.get('error')}"
+                }
+
     step_results: list[dict] = []
     total_spent = 0.0
     was_halted = False
+    
+    # ... (rest of function) ...
+
+
 
     for step in steps:
         step_id = step["id"]

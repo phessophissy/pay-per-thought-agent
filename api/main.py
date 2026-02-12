@@ -38,7 +38,10 @@ from agent.planning import generate_plan
 from agent.executor import execute_plan
 from agent.synthesizer import synthesize_results
 
-from config import config
+try:
+    from api.config import config
+except ImportError:
+    from config import config
 
 # ─── App Setup ────────────────────────────────────────────────
 
