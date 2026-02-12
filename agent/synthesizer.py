@@ -4,7 +4,7 @@ Pay-Per-Thought Agent — Synthesis Module
 
 Phase 3: Aggregate verified step results into a final structured output.
 
-Uses Claude to synthesize evidence from completed steps into a
+Uses Gemini to synthesize evidence from completed steps into a
 coherent answer with confidence scoring, source attribution,
 and explicit labeling of assumptions and limitations.
 
@@ -19,7 +19,8 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-import anthropic
+from google import genai
+from google.genai import types
 
 # ─── System Prompt ────────────────────────────────────────────
 
@@ -100,34 +101,33 @@ def synthesize_results(
 
     evidence = "\n\n---\n\n".join(evidence_parts)
 
-    # ── Call Claude for synthesis ──
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    # ── Call Gemini for synthesis ──
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY not set")
+        raise ValueError("GEMINI_API_KEY not set")
 
-    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
-    client = anthropic.Anthropic(api_key=api_key)
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    
+    client = genai.Client(api_key=api_key)
 
     halted_warning = "⚠️ PARTIAL RESULTS — Execution was halted before all steps completed.\n\n" if was_halted else ""
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=2048,
-        system=SYNTHESIS_SYSTEM,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f'Research query: "{query}"\n\n'
-                    f"{halted_warning}"
-                    f"Evidence from {len(completed)} completed steps:\n\n"
-                    f"{evidence}"
-                ),
-            }
-        ],
+    prompt = (
+        f'Research query: "{query}"\n\n'
+        f"{halted_warning}"
+        f"Evidence from {len(completed)} completed steps:\n\n"
+        f"{evidence}"
     )
 
-    text = response.content[0].text if response.content[0].type == "text" else ""
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYNTHESIS_SYSTEM
+        )
+    )
+    
+    text = response.text
     synthesis = _parse_json(text)
 
     return {
@@ -197,7 +197,6 @@ def handle_halt(
         "steps_total": len(partial_results),
         "refund_attempted": True,
     }
-
 
 # ─── Helpers ──────────────────────────────────────────────────
 

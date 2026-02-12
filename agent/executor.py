@@ -6,7 +6,7 @@ Phase 2: Execute each planned step with x402 payment authorization.
 
 For each step in the execution plan:
   1. Call x402 contract to authorize payment (approveStep)
-  2. If authorized → invoke the tool (Claude / Tavily / RPC)
+  2. If authorized → invoke the tool (Gemini / Tavily / RPC)
   3. On success  → call consumeStep to finalize payment
   4. On failure  → log error, skip step, continue to next
 
@@ -23,7 +23,8 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
-import anthropic
+from google import genai
+from google.genai import types
 import httpx
 
 # ─── x402 Contract Interface ─────────────────────────────────
@@ -143,10 +144,10 @@ def _remaining_budget_onchain(session_id: str) -> float:
 # ─── Tool Executors ───────────────────────────────────────────
 
 
-def _execute_anthropic(step: dict, query: str, prior_results: list[dict]) -> dict:
-    """Execute a reasoning step via Claude."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+def _execute_gemini(step: dict, query: str, prior_results: list[dict]) -> dict:
+    """Execute a reasoning step via Gemini."""
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
 
     context = "\n".join(
         f"[Step {r['index']}]: {json.dumps(r['output'], default=str)}"
@@ -154,30 +155,31 @@ def _execute_anthropic(step: dict, query: str, prior_results: list[dict]) -> dic
         if r["status"] == "completed" and r.get("output")
     )
 
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=model,
-        max_tokens=1024,
-        system=(
-            "You are a research analyst. Provide factual, concise answers. "
-            "Respond with JSON: "
-            '{"analysis": "...", "confidence": "high|medium|low", "key_points": ["..."]}'
-        ),
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f'Query: "{query}"\n'
-                    f'Task: {step["description"]}\n\n'
-                    f'{f"Prior context:\n{context}" if context else "No prior context."}'
-                ),
-            }
-        ],
+    client = genai.Client(api_key=api_key)
+    
+    system_instruction = (
+        "You are a research analyst. Provide factual, concise answers. "
+        "Respond with JSON: "
+        '{"analysis": "...", "confidence": "high|medium|low", "key_points": ["..."]}'
     )
 
-    text = response.content[0].text if response.content[0].type == "text" else ""
+    prompt = (
+        f'Query: "{query}"\n'
+        f'Task: {step["description"]}\n\n'
+        f'{f"Prior context:\n{context}" if context else "No prior context."}'
+    )
+
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction
+        )
+    )
+    
+    text = response.text
     data = _parse_json(text) or {"raw_text": text}
-    return {"data": data, "sources": [f"anthropic:{model}"]}
+    return {"data": data, "sources": [f"gemini:{model_name}"]}
 
 
 def _execute_tavily(step: dict) -> dict:
@@ -245,11 +247,15 @@ def _execute_blockchain_rpc(step: dict) -> dict:
     }
 
 
-TOOL_EXECUTORS = {
-    "anthropic": _execute_anthropic,
-    "tavily": _execute_tavily,
-    "blockchain_rpc": _execute_blockchain_rpc,
-}
+def _get_tool_executor(tool: str):
+    """Dynamic lookup — enables unittest.mock.patch to intercept tool functions."""
+    executors = {
+        "gemini": _execute_gemini,
+        "anthropic": _execute_gemini, # Fallback/alias for backward compatibility
+        "tavily": _execute_tavily,
+        "blockchain_rpc": _execute_blockchain_rpc,
+    }
+    return executors.get(tool)
 
 
 # ─── Main Executor ────────────────────────────────────────────
@@ -303,11 +309,11 @@ def execute_plan(plan: dict) -> dict:
         # ── Step 2: Execute Tool ──
         start_time = time.time()
         try:
-            executor_fn = TOOL_EXECUTORS.get(tool)
+            executor_fn = _get_tool_executor(tool)
             if not executor_fn:
                 raise ValueError(f"Unknown tool: {tool}")
 
-            if tool == "anthropic":
+            if tool == "gemini" or tool == "anthropic":
                 result = executor_fn(step, query, step_results)
             elif tool == "tavily":
                 result = executor_fn(step)

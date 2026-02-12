@@ -5,11 +5,11 @@ Pay-Per-Thought Agent — Planning Module
 Phase 1: Decompose a research query into atomic, metered execution steps.
 
 Each step specifies:
-  - tool to invoke (anthropic | tavily | blockchain_rpc)
+  - tool to invoke (gemini | tavily | blockchain_rpc)
   - description of what the step does
   - estimated cost in USD
 
-The planner uses Claude to reason about optimal decomposition,
+The planner uses Gemini to reason about optimal decomposition,
 then truncates the plan to fit within the user's max budget.
 
 Entry point: generate_plan(query, max_budget_usd, session_id?)
@@ -22,13 +22,14 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-import anthropic
+from google import genai
+from google.genai import types
 
 # ─── Cost Table ───────────────────────────────────────────────
 # Per-invocation cost estimates for each tool.
 
 COST_TABLE = {
-    "anthropic": 0.08,       # ~$0.08 per Claude call (avg input+output)
+    "gemini": 0.005,         # ~$0.005 per Gemini Flash call
     "tavily": 0.01,          # ~$0.01 per Tavily search
     "blockchain_rpc": 0.001, # ~$0.001 per RPC call
 }
@@ -42,19 +43,19 @@ a factual, verifiable answer.
 
 Each step must specify:
   - "description": what this step does (one sentence)
-  - "tool": exactly one of "anthropic", "tavily", or "blockchain_rpc"
+  - "tool": exactly one of "gemini", "tavily", or "blockchain_rpc"
 
 Rules:
 1. Use 3-7 steps total. Minimize steps to reduce cost.
 2. Use "tavily" for web-based factual data retrieval.
 3. Use "blockchain_rpc" for on-chain data (balances, block numbers, contract state).
-4. Use "anthropic" for reasoning, analysis, or synthesis of prior step outputs.
+4. Use "gemini" for reasoning, analysis, or synthesis of prior step outputs.
 5. Order steps logically — data retrieval before analysis.
 6. Do NOT hallucinate data. Each step must produce real, verifiable output.
 7. Return ONLY valid JSON. No markdown, no explanation, no code blocks.
 
 Output format:
-{"steps": [{"description": "...", "tool": "anthropic|tavily|blockchain_rpc"}]}"""
+{"steps": [{"description": "...", "tool": "gemini|tavily|blockchain_rpc"}]}"""
 
 
 def generate_plan(
@@ -76,31 +77,31 @@ def generate_plan(
     if not session_id:
         session_id = uuid.uuid4().hex
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY not set")
+        raise ValueError("GEMINI_API_KEY not set")
 
-    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    
+    # Initialize new client
+    client = genai.Client(api_key=api_key)
 
-    # ── Call Claude for plan decomposition ──
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=model,
-        max_tokens=2048,
-        system=PLANNING_SYSTEM,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f'Research query: "{query}"\n\n'
-                    f"Budget: ${max_budget_usd:.2f}\n\n"
-                    "Decompose into atomic steps. Return JSON only."
-                ),
-            }
-        ],
+    # ── Call Gemini for plan decomposition ──
+    prompt = (
+        f'Research query: "{query}"\n\n'
+        f"Budget: ${max_budget_usd:.2f}\n\n"
+        "Decompose into atomic steps. Return JSON only."
     )
-
-    text = response.content[0].text if response.content[0].type == "text" else ""
+    
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=PLANNING_SYSTEM
+        )
+    )
+    
+    text = response.text
     raw_plan = _parse_json(text)
 
     # ── Build steps with cost enforcement ──
@@ -108,9 +109,9 @@ def generate_plan(
     total_cost = 0.0
 
     for i, raw_step in enumerate(raw_plan.get("steps", [])):
-        tool = raw_step.get("tool", "anthropic")
+        tool = raw_step.get("tool", "gemini")
         if tool not in VALID_TOOLS:
-            tool = "anthropic"
+            tool = "gemini"
 
         cost = COST_TABLE[tool]
 

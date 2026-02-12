@@ -19,7 +19,7 @@ Built for the [Chainlink CRE Hackathon](https://chain.link).
 │  ┌──────────┐    ┌───────────────┐    ┌──────────────┐          │
 │  │ PLANNING │───▶│   EXECUTION   │───▶│  SYNTHESIS   │          │
 │  │          │    │               │    │              │          │
-│  │ Claude   │    │ For each step:│    │ Claude       │          │
+│  │ Gemini   │    │ For each step:│    │ Gemini       │          │
 │  │ decompose│    │  1. x402 auth │    │ aggregate    │          │
 │  │ query    │    │  2. tool call │    │ evidence     │          │
 │  │ → steps  │    │  3. confirm   │    │ → JSON       │          │
@@ -35,7 +35,8 @@ Built for the [Chainlink CRE Hackathon](https://chain.link).
 │                │ settleBudget()    │                             │
 │                └───────────────────┘                             │
 │                                                                 │
-│  Tools:  Claude (reasoning)  │  Tavily (search)  │  RPC (chain) │
+│  Tools:  Gemini (reasoning)  │  Tavily (search)  │  RPC (chain) │
+│          (via google-genai)  │                   │              │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -52,9 +53,9 @@ Built for the [Chainlink CRE Hackathon](https://chain.link).
 ```
 pay-per-thought-agent/
 ├── agent/                      # Core agent logic (Python)
-│   ├── planning.py             # Phase 1: Query decomposition
+│   ├── planning.py             # Phase 1: Query decomposition (Gemini)
 │   ├── executor.py             # Phase 2: x402-gated execution
-│   └── synthesizer.py          # Phase 3: Result aggregation
+│   └── synthesizer.py          # Phase 3: Result aggregation (Gemini)
 ├── api/                        # FastAPI server
 │   ├── main.py                 # POST /research endpoint
 │   ├── config.py               # Environment configuration
@@ -80,6 +81,9 @@ pay-per-thought-agent/
 ├── docs/                       # Documentation
 │   └── demo.md                 # 3-minute demo script
 ├── .env.example                # Environment variable template
+├── scripts/                    # Utility scripts
+│   ├── simulate_workflow.py    # Offline simulation
+│   └── sanity_check_gemini.py  # Verify Gemini API key
 └── README.md                   # This file
 ```
 
@@ -102,7 +106,7 @@ Edit `.env` with your keys:
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Claude API key | ✅ |
+| `GEMINI_API_KEY` | Google Gemini API key | ✅ |
 | `TAVILY_API_KEY` | Tavily search API key | ✅ |
 | `RPC_URL` | Ethereum Sepolia RPC | ✅ |
 | `X402_CONTRACT_ADDRESS` | Deployed payment gate | For live x402 |
@@ -116,24 +120,40 @@ Edit `.env` with your keys:
 pip install -r api/requirements.txt
 ```
 
-### 4. Run the Server
+### 4. Verify Setup
+
+Run the sanity check script to ensure your Gemini API key works:
+
+```bash
+python3 scripts/sanity_check_gemini.py
+```
+
+### 5. Run Simulation (Offline)
+
+Run a full workflow simulation without live API keys (uses mocks):
+
+```bash
+python3 scripts/simulate_workflow.py
+```
+
+### 6. Run the Server
 
 ```bash
 cd api
 uvicorn main:app --reload --port 8000
 ```
 
-### 5. Open Demo Frontend
+### 7. Open Demo Frontend
 
 ```bash
 # In another terminal
 cd frontend
-python -m http.server 3000
+python3 -m http.server 3000
 ```
 
 Open `http://localhost:3000` in your browser.
 
-### 6. Test via CLI
+### 8. Test via CLI
 
 ```bash
 curl -X POST http://localhost:8000/research \
@@ -244,14 +264,14 @@ Returns server status and configuration validation.
 ## How It Works
 
 1. **User submits research query** with a budget cap
-2. **Planning**: Claude decomposes the query into 3-7 atomic steps, each with a tool assignment and cost estimate
+2. **Planning**: Gemini decomposes the query into 3-7 atomic steps, each with a tool assignment and cost estimate
 3. **Budget Lock**: Total estimated cost is locked in the x402 contract (ERC-20 escrow)
 4. **Execution**: For each step:
    - `authorizePayment()` — x402 on-chain approval
-   - Tool invocation (Claude / Tavily / RPC)
+   - Tool invocation (Gemini / Tavily / RPC)
    - `confirmExecution()` — finalize on-chain payment
    - If tool fails → `refund()` — return step cost
-5. **Synthesis**: Claude aggregates all step evidence into a structured JSON answer with confidence scoring
+5. **Synthesis**: Gemini aggregates all step evidence into a structured JSON answer with confidence scoring
 6. **Settlement**: `settleBudget()` — returns unused funds to the user
 
 ## License
