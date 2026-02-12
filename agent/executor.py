@@ -50,7 +50,7 @@ def _approve_step_onchain(session_id: str, step_id: str, amount: float) -> dict:
 
             rpc_url = os.environ.get("RPC_URL", "")
             contract_address = os.environ.get("X402_CONTRACT_ADDRESS", "")
-            private_key = os.environ.get("PRIVATE_KEY", "")
+            private_key = os.environ.get("PRIVATE_KEY") or os.environ.get("CRE_ETH_PRIVATE_KEY", "")
 
             w3 = Web3(Web3.HTTPProvider(rpc_url))
             # Minimal ABI for authorizePayment
@@ -93,7 +93,7 @@ def _approve_step_onchain(session_id: str, step_id: str, amount: float) -> dict:
                 "from": account.address,
                 "nonce": w3.eth.get_transaction_count(account.address),
                 "gas": 2000000, # Increased gas limit for Arbitrum
-                "gasPrice": w3.eth.gas_price,
+                "gasPrice": int(w3.eth.gas_price * 1.5),
             })
 
             signed = account.sign_transaction(tx)

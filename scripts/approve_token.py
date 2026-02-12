@@ -87,7 +87,7 @@ def main():
         "from": my_address,
         "nonce": w3.eth.get_transaction_count(my_address),
         "gas": 2000000,
-        "gasPrice": w3.eth.gas_price,
+        "gasPrice": int(w3.eth.gas_price * 1.5),  # Add buffer for L2 volatility
     })
 
     signed_tx = w3.eth.account.sign_transaction(tx, private_key)
