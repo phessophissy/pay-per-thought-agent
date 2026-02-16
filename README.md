@@ -126,7 +126,7 @@ Think of it as:
 
 ---
 
-## Quick Start (Judge Mode) ⭐
+# Quick Start 
 
 ### 1. Clone
 
