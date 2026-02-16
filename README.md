@@ -1,259 +1,237 @@
-# Pay-Per-Thought Agent
+# Pay-Per-Thought  
+### A Workflow-Governed AI Research Oracle using Chainlink CRE + x402 Micropayments
 
-**Autonomous research agent with x402 micropayment enforcement.**  
-Every reasoning step is metered, authorized on-chain, and cryptographically verifiable.
+> An AI agent that cannot think unless a payment authorization exists.
 
-Built for the [Chainlink CRE Hackathon](https://chain.link).
+Pay-Per-Thought is a Chainlink-style oracle service that provides autonomous research to users and other agents. Each reasoning step (search, analysis, synthesis) is gated by a payment authorization enforced by a Chainlink CRE workflow.
+
+Instead of paying per API call, users — or other AI agents — pay **per reasoning step**.
+
+---
+
+## The Problem
+
+AI agents today have no economic accountability.
+
+When an LLM performs research:
+
+- computation cost is opaque  
+- tool usage is uncontrolled  
+- autonomous agents cannot safely hire other agents  
+- there is no verifiable metering of cognition  
+
+Current APIs bill per token, not per decision.
+
+This creates a missing primitive in decentralized systems:
+
+> There is no reliable way for one autonomous agent to purchase verifiable reasoning from another.
+
+---
+
+## Our Solution
+
+Pay-Per-Thought introduces **payment-gated cognition**.
+
+Before the AI can execute a reasoning step, a payment authorization must exist.
+
+### The workflow enforces:
+
+authorize payment → execute tool → confirm → next step → settlement
+
+
+
+This is implemented using a Chainlink CRE workflow with `evm_write` authorization gates.
+
+The AI literally cannot continue thinking unless payment conditions are satisfied.
+
+---
+
+## Why Chainlink CRE
+
+Chainlink CRE enables verifiable off-chain computation coordinated by on-chain state.
+
+We use CRE to orchestrate:
+
+- Payment authorization
+- Tool execution (Tavily search)
+- LLM reasoning (Gemini)
+- Result synthesis
+- Final settlement
+
+The workflow acts as a deterministic controller over an otherwise nondeterministic AI.
+
+This transforms an LLM into:
+
+> a programmable economic service.
 
 ---
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    FastAPI Server (:8000)                        │
-│                                                                 │
-│  POST /research  ─────────────────────────────────────────────  │
-│       │                                                         │
-│       ▼                                                         │
-│  ┌──────────┐    ┌───────────────┐    ┌──────────────┐          │
-│  │ PLANNING │───▶│   EXECUTION   │───▶│  SYNTHESIS   │          │
-│  │          │    │               │    │              │          │
-│  │ Claude   │    │ For each step:│    │ Claude       │          │
-│  │ decompose│    │  1. x402 auth │    │ aggregate    │          │
-│  │ query    │    │  2. tool call │    │ evidence     │          │
-│  │ → steps  │    │  3. confirm   │    │ → JSON       │          │
-│  └──────────┘    └───────┬───────┘    └──────────────┘          │
-│                          │                                      │
-│                ┌─────────▼─────────┐                            │
-│                │  X402PaymentGate  │                             │
-│                │  (Sepolia EVM)    │                             │
-│                │                   │                             │
-│                │ lockBudget()      │                             │
-│                │ authorizePayment()│                             │
-│                │ confirmExecution()│                             │
-│                │ settleBudget()    │                             │
-│                └───────────────────┘                             │
-│                                                                 │
-│  Tools:  Claude (reasoning)  │  Tavily (search)  │  RPC (chain) │
-└─────────────────────────────────────────────────────────────────┘
+User / Agent
+->
+HTTP API (FastAPI)
+->
+CRE Workflow Runner
+->
+Payment Authorization (x402 model)
+->
+Tools + AI Execution
+->
+Structured Research Output
 
-┌─────────────────────────────────────────────────────────────────┐
-│                CRE Workflow (workflow.yaml)                      │
-│                                                                 │
-│  trigger → planning_node → budget_lock_node → execution_node    │
-│            → synthesis_node → settlement_node                   │
-│                          ↘ halt_node (on error)                 │
-└─────────────────────────────────────────────────────────────────┘
-```
 
-## Project Structure
 
-```
-pay-per-thought-agent/
-├── agent/                      # Core agent logic (Python)
-│   ├── planning.py             # Phase 1: Query decomposition
-│   ├── executor.py             # Phase 2: x402-gated execution
-│   └── synthesizer.py          # Phase 3: Result aggregation
-├── api/                        # FastAPI server
-│   ├── main.py                 # POST /research endpoint
-│   ├── config.py               # Environment configuration
-│   └── requirements.txt        # Python dependencies
-├── contracts/                  # Solidity smart contracts
-│   ├── X402PaymentGate.sol     # Payment gate contract
-│   ├── IX402PaymentGate.sol    # Interface
-│   ├── script/                 # Foundry deployment scripts
-│   │   ├── Deploy.s.sol
-│   │   └── ExampleUsage.s.sol
-│   ├── test/                   # Foundry unit tests
-│   │   └── X402PaymentGate.t.sol
-│   └── README.md               # Contract documentation
-├── cre/                        # Chainlink CRE workflow
-│   ├── workflow.yaml           # Executable workflow definition
-│   └── pay-per-thought-workflow/  # CRE SDK template
-├── frontend/                   # Demo UI
-│   └── index.html              # Single-page app
-├── tests/                      # Python tests
-│   └── test_agent_pipeline.py  # Integration tests
-├── examples/                   # Example run outputs
-│   └── run-1/                  # Complete example session
-├── docs/                       # Documentation
-│   └── demo.md                 # 3-minute demo script
-├── .env.example                # Environment variable template
-└── README.md                   # This file
-```
+### Workflow Steps
 
-## Quick Start
+1. Lock research budget
+2. Authorize Tavily search
+3. Execute search
+4. Confirm execution
+5. Authorize AI analysis
+6. Execute LLM reasoning
+7. Confirm execution
+8. Settle payment
+
+---
+
+## What Makes This Novel
+
+This project does **not** meter API usage.
+
+It meters **cognition**.
+
+The AI must economically justify each reasoning action.
+
+This enables:
+
+- agent-to-agent services
+- DAO research oracles
+- automated due-diligence systems
+- programmable knowledge markets
+
+Think of it as:
+
+> Stripe for autonomous AI agents.
+
+---
+
+## Chainlink Features Used
+
+- Chainlink CRE workflow orchestration
+- EVM transaction authorization (`evm_write` nodes)
+- Oracle-style off-chain computation
+- Deterministic workflow-controlled execution
+- On-chain settlement model (x402 micropayment concept)
+
+---
+
+## Quick Start (Judge Mode) ⭐
 
 ### 1. Clone
 
 ```bash
-git clone https://github.com/phessophissy/pay-per-thought-agent.git
+git clone https://github.com/YOUR_USERNAME/pay-per-thought-agent
 cd pay-per-thought-agent
 ```
 
-### 2. Environment Variables
-
+### 2. Setup Python Environment
 ```bash
-cp .env.example .env
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-Edit `.env` with your keys:
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Claude API key | ✅ |
-| `TAVILY_API_KEY` | Tavily search API key | ✅ |
-| `RPC_URL` | Ethereum Sepolia RPC | ✅ |
-| `X402_CONTRACT_ADDRESS` | Deployed payment gate | For live x402 |
-| `PAYMENT_TOKEN_ADDRESS` | ERC-20 token address | For live x402 |
-| `PRIVATE_KEY` | Operator private key | For live x402 |
-| `X402_LIVE` | Set to `true` for on-chain | Default: `false` |
-
-### 3. Install Python Dependencies
-
+### 3. Install Dependencies
 ```bash
-pip install -r api/requirements.txt
+pip install fastapi uvicorn python-dotenv requests pydantic google-genai tavily-python web3 eth-account pyyaml
 ```
 
-### 4. Run the Server
-
+### 4. Run the CRE Workflow Simulation
 ```bash
-cd api
-uvicorn main:app --reload --port 8000
+python3 scripts/run_real_workflow.py "What is Aave TVL?" --budget 0.5
 ```
 
-### 5. Open Demo Frontend
+You should see:
+```yaml
+Executing node: budget_lock
+Executing node: step1_auth
+Executing node: tavily
+Executing node: step1_confirm
+Executing node: step2_auth
+Executing node: gemini
+Executing node: step2_confirm
+Executing node: settle
+__CRE_RESULT_JSON__:{...}
+```
+This demonstrates a payment-gated AI reasoning workflow.
 
+---
+
+## Optional: Run the Web Interface
+Start Backend API
 ```bash
-# In another terminal
+uvicorn api.main:app --reload
+```
+
+Start Frontend
+```bash
 cd frontend
-python -m http.server 3000
+python3 -m http.server 3000
 ```
 
-Open `http://localhost:3000` in your browser.
 
-### 6. Test via CLI
-
+Open your browser:
 ```bash
-curl -X POST http://localhost:8000/research \
-  -H "Content-Type: application/json" \
-  -d '{"task": "What is the current TVL of Aave v3?", "max_budget": "0.50"}'
+http://localhost:3000
 ```
 
-## Deploy x402 Contract
-
-### Prerequisites
-
+## Example Output
+The system returns structured machine-readable research:
 ```bash
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-forge install foundry-rs/forge-std --no-commit
-```
-
-### Deploy to Sepolia
-
-```bash
-export RPC_URL="https://ethereum-sepolia-rpc.publicnode.com"
-export PRIVATE_KEY="0x..."
-export PAYMENT_TOKEN_ADDRESS="0x..."
-export OPERATOR_ADDRESS="0x..."
-
-forge script contracts/script/Deploy.s.sol:DeployPaymentGate \
-  --rpc-url $RPC_URL \
-  --private-key $PRIVATE_KEY \
-  --broadcast
-```
-
-## Deploy CRE Workflow
-
-```bash
-# Install CRE CLI
-export PATH="$HOME/.local/bin:$PATH"
-cre login
-
-# Deploy
-cre workflow deploy -R . --target staging-settings
-
-# Activate
-cre workflow activate --workflow-name pay-per-thought-workflow --target staging-settings
-
-# Run
-cre workflow run --workflow-name pay-per-thought-workflow \
-  --target staging-settings \
-  --payload '{"query": "What is Aave v3 TVL?", "max_budget_usd": 0.50}'
-```
-
-## Run Tests
-
-### Solidity (Foundry)
-
-```bash
-forge test --match-contract X402PaymentGateTest -vvv
-```
-
-### Python (pytest)
-
-```bash
-pip install pytest
-pytest tests/test_agent_pipeline.py -v
-```
-
-## API Reference
-
-### `POST /research`
-
-**Request:**
-```json
 {
-  "task": "What is the current TVL of Aave v3 on Ethereum?",
-  "max_budget": "0.50"
+  "answer": "...",
+  "confidence": "high",
+  "steps_executed": 8,
+  "total_cost_usd": 0.015
 }
 ```
 
-**Response:**
-```json
-{
-  "status": "completed",
-  "session_id": "abc123...",
-  "query": "...",
-  "plan": { "steps": [...], "total_estimated_cost": 0.181 },
-  "actions": [
-    {
-      "step_id": "step_0_...",
-      "status": "completed",
-      "tool": "tavily",
-      "actual_cost_usd": 0.01,
-      "payment_tx_hash": "0x...",
-      "sources": ["https://..."]
-    }
-  ],
-  "results": {
-    "answer": "...",
-    "confidence": "high",
-    "key_findings": [...],
-    "total_cost_usd": 0.181
-  }
-}
+This output can be consumed by other agents or smart contracts.
+---
+
+### Demo Video
+
+Add your video here:
+```arduino
+https://youtube.com/your-demo-video
 ```
 
-### `GET /health`
+## How This Fits Web3
 
-Returns server status and configuration validation.
+Blockchains enabled trustless value transfer.
 
-## How It Works
+AI enables autonomous decision-making.
 
-1. **User submits research query** with a budget cap
-2. **Planning**: Claude decomposes the query into 3-7 atomic steps, each with a tool assignment and cost estimate
-3. **Budget Lock**: Total estimated cost is locked in the x402 contract (ERC-20 escrow)
-4. **Execution**: For each step:
-   - `authorizePayment()` — x402 on-chain approval
-   - Tool invocation (Claude / Tavily / RPC)
-   - `confirmExecution()` — finalize on-chain payment
-   - If tool fails → `refund()` — return step cost
-5. **Synthesis**: Claude aggregates all step evidence into a structured JSON answer with confidence scoring
-6. **Settlement**: `settleBudget()` — returns unused funds to the user
+But Web3 still lacks:
+
+trustless cognition markets
+
+Pay-Per-Thought introduces a primitive where:
+
+* agents can buy reasoning
+
+* workflows enforce payment authorization
+
+* results are structured and reproducible
+
+This is a building block for decentralized autonomous economies.
+
+## Team
+Name : Sheriff (aka Phessophissy)
 
 ## License
 
 MIT
+
+
+---
