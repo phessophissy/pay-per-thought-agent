@@ -1,3 +1,4 @@
+```yaml
 name: pay-per-thought
 version: "1.0.0"
 
@@ -11,9 +12,10 @@ nodes:
   # --------------------------------------------------
   - id: budget_lock
     type: evm_write
+    description: "Locks the user research budget into the x402 payment contract before any AI execution is allowed."
     inputs:
       contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
-      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      chain: "arbitrum-testnet-sepolia"
       method: "lockBudget(bytes32,uint256,uint256)"
       args:
         - "$(trigger.body.session_bytes)"
@@ -23,14 +25,15 @@ nodes:
       gas_limit: 300000
 
   # --------------------------------------------------
-  # 2. AUTHORIZE STEP 1
+  # 2. AUTHORIZE STEP 1 (SEARCH)
   # --------------------------------------------------
   - id: step1_auth
     type: evm_write
+    description: "On-chain authorization that allows the agent to execute the first cognition step (external data retrieval)."
     depends_on: [budget_lock]
     inputs:
       contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
-      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      chain: "arbitrum-testnet-sepolia"
       method: "authorizePayment(bytes32,bytes32,uint256)"
       args:
         - "$(trigger.body.session_bytes)"
@@ -40,10 +43,11 @@ nodes:
       gas_limit: 150000
 
   # --------------------------------------------------
-  # 3. TAVILY SEARCH
+  # 3. TAVILY SEARCH TOOL
   # --------------------------------------------------
   - id: tavily
     type: http
+    description: "Agent retrieves external knowledge using Tavily search after blockchain authorization."
     depends_on: [step1_auth]
     inputs:
       url: "https://api.tavily.com/search"
@@ -57,14 +61,15 @@ nodes:
         max_results: 5
 
   # --------------------------------------------------
-  # 4. CONFIRM STEP 1
+  # 4. CONFIRM STEP 1 EXECUTION
   # --------------------------------------------------
   - id: step1_confirm
     type: evm_write
+    description: "Verifies on-chain that the first cognition step actually executed before payment is released."
     depends_on: [tavily]
     inputs:
       contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
-      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      chain: "arbitrum-testnet-sepolia"
       method: "confirmExecution(bytes32,bytes32)"
       args:
         - "$(trigger.body.session_bytes)"
@@ -73,14 +78,15 @@ nodes:
       gas_limit: 100000
 
   # --------------------------------------------------
-  # 5. AUTHORIZE STEP 2
+  # 5. AUTHORIZE STEP 2 (AI REASONING)
   # --------------------------------------------------
   - id: step2_auth
     type: evm_write
+    description: "On-chain authorization for the second cognition step (AI reasoning/analysis)."
     depends_on: [step1_confirm]
     inputs:
       contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
-      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      chain: "arbitrum-testnet-sepolia"
       method: "authorizePayment(bytes32,bytes32,uint256)"
       args:
         - "$(trigger.body.session_bytes)"
@@ -94,6 +100,7 @@ nodes:
   # --------------------------------------------------
   - id: gemini
     type: http
+    description: "AI reasoning step performed by the LLM after blockchain approval."
     depends_on: [step2_auth]
     inputs:
       url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$(secrets.GEMINI_API_KEY)"
@@ -106,14 +113,15 @@ nodes:
               - text: "Answer this question clearly and concisely: $(trigger.body.query)"
 
   # --------------------------------------------------
-  # 7. CONFIRM STEP 2
+  # 7. CONFIRM STEP 2 EXECUTION
   # --------------------------------------------------
   - id: step2_confirm
     type: evm_write
+    description: "On-chain verification that the AI reasoning step completed successfully."
     depends_on: [gemini]
     inputs:
       contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
-      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      chain: "arbitrum-testnet-sepolia"
       method: "confirmExecution(bytes32,bytes32)"
       args:
         - "$(trigger.body.session_bytes)"
@@ -126,10 +134,11 @@ nodes:
   # --------------------------------------------------
   - id: settle
     type: evm_write
+    description: "Final settlement of the research session and release of the remaining locked budget."
     depends_on: [step2_confirm]
     inputs:
       contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
-      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      chain: "arbitrum-testnet-sepolia"
       method: "settleBudget(bytes32,uint256)"
       args:
         - "$(trigger.body.session_bytes)"
@@ -141,4 +150,5 @@ secrets:
   - TAVILY_API_KEY
   - GEMINI_API_KEY
   - X402_CONTRACT_ADDRESS
-  - PRIVATE_KEY
+```
+
