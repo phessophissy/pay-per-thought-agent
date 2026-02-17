@@ -1,0 +1,144 @@
+name: pay-per-thought
+version: "1.0.0"
+
+trigger:
+  type: http
+
+nodes:
+
+  # --------------------------------------------------
+  # 1. LOCK BUDGET (x402)
+  # --------------------------------------------------
+  - id: budget_lock
+    type: evm_write
+    inputs:
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      method: "lockBudget(bytes32,uint256,uint256)"
+      args:
+        - "$(trigger.body.session_bytes)"
+        - "$(trigger.body.total_cost_wei)"
+        - "$(trigger.body.step_count)"
+    config:
+      gas_limit: 300000
+
+  # --------------------------------------------------
+  # 2. AUTHORIZE STEP 1
+  # --------------------------------------------------
+  - id: step1_auth
+    type: evm_write
+    depends_on: [budget_lock]
+    inputs:
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      method: "authorizePayment(bytes32,bytes32,uint256)"
+      args:
+        - "$(trigger.body.session_bytes)"
+        - "$(trigger.body.step_1.id_bytes)"
+        - "$(trigger.body.step_1.cost_wei)"
+    config:
+      gas_limit: 150000
+
+  # --------------------------------------------------
+  # 3. TAVILY SEARCH
+  # --------------------------------------------------
+  - id: tavily
+    type: http
+    depends_on: [step1_auth]
+    inputs:
+      url: "https://api.tavily.com/search"
+      method: "POST"
+      headers:
+        "Content-Type": "application/json"
+      body:
+        api_key: "$(secrets.TAVILY_API_KEY)"
+        query: "$(trigger.body.query)"
+        search_depth: "basic"
+        max_results: 5
+
+  # --------------------------------------------------
+  # 4. CONFIRM STEP 1
+  # --------------------------------------------------
+  - id: step1_confirm
+    type: evm_write
+    depends_on: [tavily]
+    inputs:
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      method: "confirmExecution(bytes32,bytes32)"
+      args:
+        - "$(trigger.body.session_bytes)"
+        - "$(trigger.body.step_1.id_bytes)"
+    config:
+      gas_limit: 100000
+
+  # --------------------------------------------------
+  # 5. AUTHORIZE STEP 2
+  # --------------------------------------------------
+  - id: step2_auth
+    type: evm_write
+    depends_on: [step1_confirm]
+    inputs:
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      method: "authorizePayment(bytes32,bytes32,uint256)"
+      args:
+        - "$(trigger.body.session_bytes)"
+        - "$(trigger.body.step_2.id_bytes)"
+        - "$(trigger.body.step_2.cost_wei)"
+    config:
+      gas_limit: 150000
+
+  # --------------------------------------------------
+  # 6. GEMINI ANALYSIS
+  # --------------------------------------------------
+  - id: gemini
+    type: http
+    depends_on: [step2_auth]
+    inputs:
+      url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$(secrets.GEMINI_API_KEY)"
+      method: "POST"
+      headers:
+        "Content-Type": "application/json"
+      body:
+        contents:
+          - parts:
+              - text: "Answer this question clearly and concisely: $(trigger.body.query)"
+
+  # --------------------------------------------------
+  # 7. CONFIRM STEP 2
+  # --------------------------------------------------
+  - id: step2_confirm
+    type: evm_write
+    depends_on: [gemini]
+    inputs:
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      method: "confirmExecution(bytes32,bytes32)"
+      args:
+        - "$(trigger.body.session_bytes)"
+        - "$(trigger.body.step_2.id_bytes)"
+    config:
+      gas_limit: 100000
+
+  # --------------------------------------------------
+  # 8. FINAL SETTLEMENT
+  # --------------------------------------------------
+  - id: settle
+    type: evm_write
+    depends_on: [step2_confirm]
+    inputs:
+      contract_address: "$(secrets.X402_CONTRACT_ADDRESS)"
+      chain: "ethereum-testnet-sepolia-arbitrum-1"
+      method: "settleBudget(bytes32,uint256)"
+      args:
+        - "$(trigger.body.session_bytes)"
+        - "$(trigger.body.total_cost_wei)"
+    config:
+      gas_limit: 200000
+
+secrets:
+  - TAVILY_API_KEY
+  - GEMINI_API_KEY
+  - X402_CONTRACT_ADDRESS
+  - PRIVATE_KEY
