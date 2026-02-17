@@ -322,7 +322,6 @@ def _get_tool_executor(tool: str):
     """Dynamic lookup — enables unittest.mock.patch to intercept tool functions."""
     executors = {
         "gemini": _execute_gemini,
-        "anthropic": _execute_gemini, # Fallback/alias for backward compatibility
         "tavily": _execute_tavily,
         "blockchain_rpc": _execute_blockchain_rpc,
     }
@@ -404,7 +403,7 @@ def execute_plan(plan: dict) -> dict:
             if not executor_fn:
                 raise ValueError(f"Unknown tool: {tool}")
 
-            if tool == "gemini" or tool == "anthropic":
+            if tool == "gemini":
                 result = executor_fn(step, query, step_results)
             elif tool == "tavily":
                 result = executor_fn(step)

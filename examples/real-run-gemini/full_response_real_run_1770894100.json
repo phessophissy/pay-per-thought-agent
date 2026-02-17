@@ -1,0 +1,48 @@
+{
+  "status": "completed",
+  "session_id": "real_run_1770894100",
+  "query": "What is the TVL of Aave v3?",
+  "plan": {
+    "steps": [
+      {
+        "id": "step_0_d2858f46",
+        "index": 0,
+        "description": "Search for the Total Value Locked (TVL) of Aave v3 using a web search.",
+        "tool": "tavily",
+        "estimated_cost_usd": 0.01
+      },
+      {
+        "id": "step_1_0020d07a",
+        "index": 1,
+        "description": "Analyze the search results to identify the most reliable and up-to-date TVL figure for Aave v3.",
+        "tool": "gemini",
+        "estimated_cost_usd": 0.005
+      }
+    ],
+    "total_estimated_cost": 0.015,
+    "step_count": 2
+  },
+  "actions": [],
+  "results": {
+    "answer": "No steps completed successfully. Unable to provide an answer.",
+    "confidence": "low",
+    "key_findings": [],
+    "assumptions": [],
+    "limitations": [
+      "No execution steps completed."
+    ],
+    "sources": [],
+    "total_cost_usd": 0.0,
+    "steps_executed": 0,
+    "steps_total": 0,
+    "was_halted": true
+  },
+  "settlement": {
+    "total_locked_usd": 0.5,
+    "total_spent_usd": 0.0,
+    "refund_usd": 0.5,
+    "settlement_tx_hash": "sim_settle_1770894103",
+    "status": "settled"
+  },
+  "timestamp": "2026-02-12T11:01:43.646344+00:00"
+}

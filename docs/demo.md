@@ -19,7 +19,7 @@ cd pay-per-thought-agent/frontend
 python -m http.server 3000
 ```
 
-Ensure `.env` has valid `ANTHROPIC_API_KEY` and `TAVILY_API_KEY`.
+Ensure `.env` has valid `GEMINI_API_KEY` and `TAVILY_API_KEY`.
 
 ---
 
@@ -51,7 +51,7 @@ Ensure `.env` has valid `ANTHROPIC_API_KEY` and `TAVILY_API_KEY`.
 **Point out:**
 - Each step shows: tool type, cost, duration, tx hash
 - Budget meter fills progressively
-- Steps use different tools: Tavily for search, Claude for analysis, RPC for chain data
+- Steps use different tools: Tavily for search, Gemini for analysis, RPC for chain data
 
 ### [2:00–2:30] Review Results
 

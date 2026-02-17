@@ -1,0 +1,19 @@
+{
+    "query": "What is the TVL of Aave v3?",
+    "max_budget_usd": 0.50,
+    "session_id": "cre_manual_run_01",
+    "session_bytes": "0x8a7e72b4cb3b7b4333887f4333887f4333887f4333887f4333887f4333887f43",
+    "total_cost_usd": 0.015,
+    "total_cost_wei": "15000000000000000",
+    "step_count": 2,
+    "step_1": {
+        "id": "step_1_tavily",
+        "id_bytes": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        "cost_wei": "10000000000000000"
+    },
+    "step_2": {
+        "id": "step_2_gemini",
+        "id_bytes": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        "cost_wei": "5000000000000000"
+    }
+}

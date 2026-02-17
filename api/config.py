@@ -31,7 +31,7 @@ class Config:
     PRIVATE_KEY: str = os.getenv("PRIVATE_KEY", "")
 
     # Costs (USD)
-    COST_GEMINI: float = 0.005  # Cheaper than Claude
+    COST_GEMINI: float = 0.005
     COST_TAVILY: float = 0.01
     COST_BLOCKCHAIN_RPC: float = 0.001
     COST_REASONING: float = 0.02

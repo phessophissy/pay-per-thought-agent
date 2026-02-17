@@ -62,6 +62,7 @@ def generate_plan(
     query: str,
     max_budget_usd: float,
     session_id: Optional[str] = None,
+    force_steps_count: Optional[int] = None,
 ) -> dict:
     """
     Generate an execution plan for a research query.
@@ -70,6 +71,7 @@ def generate_plan(
         query: The research question to investigate.
         max_budget_usd: Maximum budget in USD.
         session_id: Optional session ID (auto-generated if omitted).
+        force_steps_count: If set, forces the planner to generate exactly this many steps.
 
     Returns:
         ExecutionPlan dict with steps, costs, and session metadata.
@@ -87,17 +89,30 @@ def generate_plan(
     client = genai.Client(api_key=api_key)
 
     # ── Call Gemini for plan decomposition ──
+    if force_steps_count:
+        step_instruction = f"Decompose into exactly {force_steps_count} atomic steps."
+    else:
+        step_instruction = "Decompose into atomic steps."
+
     prompt = (
         f'Research query: "{query}"\n\n'
         f"Budget: ${max_budget_usd:.2f}\n\n"
-        "Decompose into atomic steps. Return JSON only."
+        f"{step_instruction} Return JSON only."
     )
     
+    # Adjust system prompt if forcing steps
+    system_prompt = PLANNING_SYSTEM
+    if force_steps_count:
+        system_prompt = system_prompt.replace(
+            "1. Use 3-7 steps total. Minimize steps to reduce cost.",
+            f"1. You MUST generate EXACTLY {force_steps_count} steps."
+        )
+
     response = client.models.generate_content(
         model=model_name,
         contents=prompt,
         config=types.GenerateContentConfig(
-            system_instruction=PLANNING_SYSTEM
+            system_instruction=system_prompt
         )
     )
     
@@ -108,14 +123,27 @@ def generate_plan(
     steps = []
     total_cost = 0.0
 
-    for i, raw_step in enumerate(raw_plan.get("steps", [])):
+    raw_steps = raw_plan.get("steps", [])
+    
+    # If generic failure to get right count, pad or truncate (though prompt should handle it)
+    if force_steps_count:
+        # Pad if too few
+        while len(raw_steps) < force_steps_count:
+            raw_steps.append({
+                "description": "Analyze previous findings",
+                "tool": "gemini"
+            })
+        # Truncate if too many
+        raw_steps = raw_steps[:force_steps_count]
+
+    for i, raw_step in enumerate(raw_steps):
         tool = raw_step.get("tool", "gemini")
         if tool not in VALID_TOOLS:
             tool = "gemini"
 
         cost = COST_TABLE[tool]
 
-        # Budget guard: stop adding steps if budget would be exceeded
+        # Budget guard: halt planning when the next step exceeds budget.
         if total_cost + cost > max_budget_usd:
             break
 

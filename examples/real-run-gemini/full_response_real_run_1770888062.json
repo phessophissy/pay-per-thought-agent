@@ -1,0 +1,62 @@
+{
+  "status": "completed",
+  "session_id": "real_run_1770888062",
+  "query": "What is the TVL of Aave v3?",
+  "plan": {
+    "steps": [
+      {
+        "id": "step_0_6980493b",
+        "index": 0,
+        "description": "Search for the current Total Value Locked (TVL) of Aave v3.",
+        "tool": "tavily",
+        "estimated_cost_usd": 0.01
+      },
+      {
+        "id": "step_1_3e110ea2",
+        "index": 1,
+        "description": "Analyze the search results to extract the TVL of Aave v3.",
+        "tool": "gemini",
+        "estimated_cost_usd": 0.005
+      }
+    ],
+    "total_estimated_cost": 0.015,
+    "step_count": 2
+  },
+  "actions": [
+    {
+      "step_id": "step_0_6980493b",
+      "index": 0,
+      "status": "payment_denied",
+      "tool": "tavily",
+      "output": null,
+      "actual_cost_usd": 0.0,
+      "duration_ms": 0,
+      "payment_tx_hash": null,
+      "error": "Non-hexadecimal digit found",
+      "sources": [],
+      "timestamp": "2026-02-12T09:21:05.388305+00:00"
+    }
+  ],
+  "results": {
+    "answer": "No steps completed successfully. Unable to provide an answer.",
+    "confidence": "low",
+    "key_findings": [],
+    "assumptions": [],
+    "limitations": [
+      "No execution steps completed."
+    ],
+    "sources": [],
+    "total_cost_usd": 0.0,
+    "steps_executed": 0,
+    "steps_total": 1,
+    "was_halted": true
+  },
+  "settlement": {
+    "total_locked_usd": 0.5,
+    "total_spent_usd": 0.0,
+    "refund_usd": 0.5,
+    "settlement_tx_hash": "sim_settle_1770888065",
+    "status": "settled"
+  },
+  "timestamp": "2026-02-12T09:21:05.388965+00:00"
+}

@@ -1,0 +1,9 @@
+settings:
+  target: local-settings
+
+targets:
+  - name: local-settings
+    rpcs:
+      - chain-name: ethereum-testnet-sepolia-arbitrum-1
+        url: https://arbitrum-sepolia-rpc.publicnode.com
+
