@@ -3,7 +3,7 @@
 **Autonomous research agent with x402 micropayment enforcement.**  
 Every reasoning step is metered, authorized on-chain, and cryptographically verifiable.
 
-Built for the [Chainlink CRE Hackathon](https://chain.link/hackathon)).
+Built for the [Chainlink CRE Hackathon](https://chain.link/hackathon)
 
 ---
 
