@@ -2,6 +2,10 @@
 
 Minimal ERC-20 payment gate for metered cognition. Enforces per-step micropayment authorization for the Pay-Per-Thought autonomous research agent.
 
+Network: Arbitrum Sepolia  
+Purpose: x402 micropayment authorization for agent reasoning steps  
+Each workflow step requires on-chain authorization before execution.
+
 ## Architecture
 
 ```
@@ -51,11 +55,11 @@ foundryup
 forge install foundry-rs/forge-std --no-commit
 ```
 
-### Deploy to Sepolia
+### Deploy to Arbitrum Sepolia
 
 ```bash
 # Set environment
-export RPC_URL="https://ethereum-sepolia-rpc.publicnode.com"
+export RPC_URL="https://arbitrum-sepolia-rpc.publicnode.com"
 export PRIVATE_KEY="0x..."
 export PAYMENT_TOKEN_ADDRESS="0x..."   # ERC-20 token address
 export OPERATOR_ADDRESS="0x..."         # Agent operator address
@@ -99,7 +103,7 @@ forge test --match-contract X402PaymentGateTest -vvv
 2. Agent calls lockBudget() — escrows total budget
 3. For each execution step:
    a. Agent calls authorizePayment() — reserves step cost
-   b. Agent executes tool (Claude/Tavily/RPC)
+   b. Agent executes tool (Gemini/Tavily/RPC)
    c. On success: agent calls confirmExecution()
    d. On failure: agent calls refund()
 4. Agent calls settleBudget() — returns unused funds to user

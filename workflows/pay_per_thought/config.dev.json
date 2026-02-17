@@ -1,0 +1,11 @@
+{
+  "rpcs": [
+    {
+      "chain-name": "ethereum-testnet-sepolia-arbitrum-1",
+      "url": "https://arbitrum-sepolia-rpc.publicnode.com"
+    }
+  ],
+  "account": {
+    "private-key": "${CRE_ETH_PRIVATE_KEY}"
+  }
+}

@@ -9,7 +9,7 @@ import "../X402PaymentGate.sol";
  * @notice Foundry deployment script for X402PaymentGate
  *
  * Usage:
- *   # Deploy to Sepolia
+ *   # Deploy to Arbitrum Sepolia
  *   forge script contracts/script/Deploy.s.sol:DeployPaymentGate \
  *     --rpc-url $RPC_URL \
  *     --private-key $PRIVATE_KEY \
